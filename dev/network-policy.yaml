@@ -1,0 +1,54 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-public-egress
+  namespace: coder
+  labels:
+    app.kubernetes.io/part-of: coder
+spec:
+  # Cover the Coder server, its built-in provisioners, administrative Jobs,
+  # workspace pods, and any future pod added to this namespace.
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # DNS is required to resolve namespace-local service names. Limit it to
+    # kube-system DNS pods rather than permitting port 53 to arbitrary hosts.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # Coder, PostgreSQL, workspace agents, and the packaged Zarf services are
+    # the explicitly supported in-cluster runtime dependencies.
+    - to:
+        - namespaceSelector:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values:
+                  - coder
+                  - cnpg
+                  - zarf
+
+    # Permit private internal endpoints, including the Kubernetes API endpoint
+    # and explicitly documented internal artifact services, while rejecting
+    # public IPv4 and IPv6 destinations. Network-edge controls remain the final
+    # boundary for organization-specific non-RFC1918 routes.
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+        - ipBlock:
+            cidr: fd00::/8

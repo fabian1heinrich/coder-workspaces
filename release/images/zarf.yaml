@@ -1,0 +1,27 @@
+kind: ZarfPackageConfig
+
+metadata:
+  name: coder-workspaces-images
+  version: "###ZARF_PKG_TMPL_RELEASE_ID###"
+  description: Mirror production Coder workspace and publisher images
+  architecture: amd64
+
+components:
+  - name: workspace-runtime
+    description: Python workspace runtime
+    required: true
+    images:
+      - registry.invalid/fabian1heinrich/coder-workspaces/python-workspace@sha256:a350b387c888de9f18a6cb4fcb0c8372bb0496a0d8abd2e57cd8de968b29ef74
+
+  - name: workspace-tooling
+    description: Read-only code-server and VSIX payloads
+    required: true
+    images:
+      - registry.invalid/fabian1heinrich/coder-workspaces/code-server@sha256:a92b84f1440bb110f807f28891e678ad326022a2f39545a9534e62308f9625d4
+      - registry.invalid/fabian1heinrich/coder-workspaces/python-vsix@sha256:b97eae31de6a9d6b33aed45db57870680dbdf827d92647b8880aa66d6db8a47d
+
+  - name: publisher-runtime
+    description: Offline OpenTofu and Coder provider runner
+    required: true
+    images:
+      - registry.invalid/fabian1heinrich/coder-workspaces/coderd-provider@sha256:b2bd2ce5aaece5c30d17cace8a27b488c3843deb1293a767c43738a2734a1996

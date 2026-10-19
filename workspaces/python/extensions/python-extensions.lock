@@ -1,0 +1,22 @@
+# extension-id|version|platform|sha256|download-url
+aaron-bond.better-comments|3.0.2|universal|11eb1ebe69b3d859c9ecd4026d83ab2b7db41069e6dd40dafbe12f54348d7817|https://open-vsx.org/api/aaron-bond/better-comments/3.0.2/file/aaron-bond.better-comments-3.0.2.vsix
+astral-sh.ty|2026.76.0|linux-x64|03d70532154c0be76e2664486d6715584c59740b438bb6e3f7972984bf054358|https://open-vsx.org/api/astral-sh/ty/linux-x64/2026.76.0/file/astral-sh.ty-2026.76.0@linux-x64.vsix
+bierner.docs-view|0.1.0|universal|aa35dc687bcc15a0c24759a45a5d61011a44ce6a7af2f737b3418e531550de36|https://open-vsx.org/api/bierner/docs-view/0.1.0/file/bierner.docs-view-0.1.0.vsix
+charliermarsh.ruff|2026.84.0|linux-x64|adc1768483555ac9c690ea06cffa426d49e068af69fd66a7d37a924e7c41fd7b|https://open-vsx.org/api/charliermarsh/ruff/linux-x64/2026.84.0/file/charliermarsh.ruff-2026.84.0@linux-x64.vsix
+christian-kohler.path-intellisense|2.8.0|universal|a856e4436f4d9b4b03d581ec10f826fe79eeb6cb34f5eb9d5b013fd817aeb940|https://open-vsx.org/api/christian-kohler/path-intellisense/2.8.0/file/christian-kohler.path-intellisense-2.8.0.vsix
+davidanson.vscode-markdownlint|0.62.1|universal|b6baf90037c903aa21b9c525972910561a903b82e12fe8d67220740ec15b1aa0|https://open-vsx.org/api/DavidAnson/vscode-markdownlint/0.62.1/file/DavidAnson.vscode-markdownlint-0.62.1.vsix
+esbenp.prettier-vscode|12.4.0|universal|fb730ea4306d09cdc0a3aaa9e9baae28058cc97a4fbfce8b056b377a0639a9fe|https://open-vsx.org/api/esbenp/prettier-vscode/12.4.0/file/esbenp.prettier-vscode-12.4.0.vsix
+github.github-vscode-theme|6.3.5|universal|a85236a58ad490b1600ec5a0fd0cea7eec56fb9d33660a1ac82c6da639ad3af4|https://open-vsx.org/api/GitHub/github-vscode-theme/6.3.5/file/GitHub.github-vscode-theme-6.3.5.vsix
+gruntfuggly.todo-tree|0.0.215|universal|326d84bd6372fceb8b40087b4d80be1046e47a4d116f2129e3f3d018b903df00|https://open-vsx.org/api/Gruntfuggly/todo-tree/0.0.215/file/Gruntfuggly.todo-tree-0.0.215.vsix
+ms-python.debugpy|2026.6.0|linux-x64|c7744af4bf72978f5792624a71c80e2b622a1118574fada3a903d70ac03d5bca|https://open-vsx.org/api/ms-python/debugpy/linux-x64/2026.6.0/file/ms-python.debugpy-2026.6.0@linux-x64.vsix
+ms-python.python|2026.4.0|universal|232aeafb01f069824fdd92d3e628c1c442bbcfa1d3cc945ff97076340bb2b4a6|https://open-vsx.org/api/ms-python/python/2026.4.0/file/ms-python.python-2026.4.0.vsix
+ms-toolsai.jupyter-renderers|1.3.0|universal|d09f6c517a8090a932bb4e2c31bcb2de34ddb2a71133477f6c47f28f36eb76ae|https://open-vsx.org/api/ms-toolsai/jupyter-renderers/1.3.0/file/ms-toolsai.jupyter-renderers-1.3.0.vsix
+ms-toolsai.jupyter|2025.9.1|universal|110660656944c4ab0ff687db488c2e8c59c67ec121dcf09bcaa54b6edd9ce71f|https://open-vsx.org/api/ms-toolsai/jupyter/2025.9.1/file/ms-toolsai.jupyter-2025.9.1.vsix
+ms-toolsai.vscode-jupyter-cell-tags|0.1.9|universal|7cd43af55cf562a001dc475e92d9f3fd4b7173011adca0c02da22fbf891c274b|https://open-vsx.org/api/ms-toolsai/vscode-jupyter-cell-tags/0.1.9/file/ms-toolsai.vscode-jupyter-cell-tags-0.1.9.vsix
+ms-toolsai.vscode-jupyter-slideshow|0.1.6|universal|5b8dee0d569b7e0990bb4847c34748cdc0102078779351ed415d9d71cfa3e945|https://open-vsx.org/api/ms-toolsai/vscode-jupyter-slideshow/0.1.6/file/ms-toolsai.vscode-jupyter-slideshow-0.1.6.vsix
+njpwerner.autodocstring|0.6.1|universal|a1cb8037f193638d5e8204f5698109af4be039fd63621b678984249e59036114|https://open-vsx.org/api/njpwerner/autodocstring/0.6.1/file/njpwerner.autodocstring-0.6.1.vsix
+redhat.vscode-yaml|1.25.2026100308|universal|2ed9e59bc11e4aa1a96c771440ec0879e1f45624d605c7e4fe53ff4059694fa1|https://open-vsx.org/api/redhat/vscode-yaml/1.25.2026100308/file/redhat.vscode-yaml-1.25.2026100308.vsix
+tamasfe.even-better-toml|0.21.2|universal|f3dc44f1c551edef397a79f0f8c5db4066c6a547e210b5c3cec4400bf173b008|https://open-vsx.org/api/tamasfe/even-better-toml/0.21.2/file/tamasfe.even-better-toml-0.21.2.vsix
+usernamehw.errorlens|3.29.0|universal|daf150c4b1ab9faaab1ec6d674ae78e7ee49471ec3fd9719772371020ae1ebd2|https://open-vsx.org/api/usernamehw/errorlens/3.29.0/file/usernamehw.errorlens-3.29.0.vsix
+vscode-icons-team.vscode-icons|13.0.0|universal|89aa767f87f09dc966efe2e70bed20321d5cb5b2f43fd413598fb6913a9f99c5|https://open-vsx.org/api/vscode-icons-team/vscode-icons/13.0.0/file/vscode-icons-team.vscode-icons-13.0.0.vsix
+yzhang.markdown-all-in-one|3.6.2|universal|75037cc2e0f940ead6cb2db25c5e6f139031885f7dc07d56abe1e0bc0781dd1a|https://open-vsx.org/api/yzhang/markdown-all-in-one/3.6.2/file/yzhang.markdown-all-in-one-3.6.2.vsix

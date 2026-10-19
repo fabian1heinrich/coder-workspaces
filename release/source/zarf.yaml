@@ -1,0 +1,16 @@
+kind: ZarfPackageConfig
+
+metadata:
+  name: coder-workspaces
+  version: "###ZARF_PKG_TMPL_RELEASE_ID###"
+  description: Mirror the Coder workspace publisher Flux source to Zot
+  architecture: amd64
+
+components:
+  - name: workspace-source
+    description: Flux-compatible publisher deployment and workspace templates
+    required: true
+    imageArchives:
+      - path: coder-workspaces-source-oci.tar
+        images:
+          - "registry.invalid/fabian1heinrich/coder-workspaces/source:###ZARF_PKG_TMPL_RELEASE_ID###"

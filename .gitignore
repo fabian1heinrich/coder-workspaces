@@ -1,0 +1,23 @@
+# Local environment and direnv data.
+.env
+.env.*
+!.env.example
+!.env.*.example
+.direnv/
+.cache/
+kubeconfig
+dev/zarf-config.yaml
+
+# Local Terraform/OpenTofu working data and state. Lock files remain tracked.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+
+# Local Coder provider diagnostics.
+**/.coder/pprof
+
+*.tar.zst

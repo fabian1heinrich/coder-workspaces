@@ -1,0 +1,27 @@
+[project]
+name = "deja-doc"
+version = "0.0.0"
+description = "Managed offline development environment for Deja Doc"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "pydantic==2.11.7",
+  "typer==0.16.0",
+]
+
+[build-system]
+requires = ["setuptools==80.9.0", "wheel==0.45.1"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+build = [
+  "setuptools==80.9.0",
+  "wheel==0.45.1",
+]
+dev = [
+  "pytest==8.4.1",
+  "ruff==0.12.1",
+]
+
+[tool.uv]
+no-build-isolation = true
+package = true

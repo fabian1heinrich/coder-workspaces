@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: template-publisher
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      containers:
+        - name: publish
+          image: "###ZARF_CONST_PUBLISHER_IMAGE###"
+          env:
+            - name: PUBLISHER_STATE_SUFFIX
+              value: coder-template-publisher
+            - name: PUBLISH_TEMPLATE
+              value: "###ZARF_CONST_PUBLISH_TEMPLATE###"
+            - name: UPDATE_WORKSPACE
+              value: "###ZARF_CONST_UPDATE_WORKSPACE###"
+            - name: CODER_ORGANIZATION
+              value: default
+            - name: CODER_URL
+              value: http://coder.coder.svc.cluster.local
+            - name: TF_VAR_coder_url
+              value: http://coder.coder.svc.cluster.local
+            - name: CODER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: coder-template-publisher-auth
+                  key: token
+            - name: TF_VAR_coder_token
+              valueFrom:
+                secretKeyRef:
+                  name: coder-template-publisher-auth
+                  key: token
+            - name: TF_VAR_coder_namespace
+              value: coder
+            - name: TF_VAR_workspace_image
+              value: "###ZARF_CONST_WORKSPACE_IMAGE###"
+            - name: TF_VAR_dupe_trooper_image
+              value: "###ZARF_CONST_DUPE_TROOPER_IMAGE###"
+            - name: TF_VAR_deja_doc_image
+              value: "###ZARF_CONST_DEJA_DOC_IMAGE###"
+            - name: TF_VAR_vsix_image
+              value: "###ZARF_CONST_VSIX_IMAGE###"
+            - name: TF_VAR_code_server_image
+              value: "###ZARF_CONST_CODE_SERVER_IMAGE###"
+            - name: TF_VAR_home_storage_class
+              value: ""
+            - name: TF_VAR_image_pull_secret_name
+              value: ""
+            - name: TF_VAR_git_secret_name
+              value: private-git-server
+            - name: TF_VAR_git_base_url
+              value: http://zarf-gitea-http.zarf.svc.cluster.local:3000
+            - name: TF_VAR_git_auth_mode
+              value: zarf-secret
+            - name: TF_VAR_git_external_auth_id
+              value: forgejo
+            - name: TF_VAR_platform_ca_config_map_name
+              value: ""
+            - name: TF_VAR_default_repository
+              value: zarf-git-user/uv-devcontainer-322178071
+            - name: TF_VAR_default_git_branch
+              value: zarf-ref-e637e71ed9bfcd2a2181c0b0c8d3050f1beb8483
+            - name: TF_VAR_default_dotfiles_repository
+              value: zarf-git-user/coder-dotfiles-3319437223
+            - name: TF_VAR_default_dotfiles_branch
+              value: zarf-ref-4d8bd9bf877c32e257f671ab30c86e898261891e
+            - name: TF_VAR_publish_id
+              value: ""

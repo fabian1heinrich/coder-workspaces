@@ -1,0 +1,248 @@
+kind: ZarfPackageConfig
+
+metadata:
+  name: coder-local-dev
+  version: 0.1.0
+  description: Locally built Coder platform and optional workspace-template release
+  architecture: amd64
+
+variables:
+  - name: CODER_ADMIN_PASSWORD
+    description: Password for the initial Coder administrator.
+    default: ChangeMe123_
+    prompt: false
+    sensitive: true
+    pattern: "^[A-Za-z0-9._~-]{8,128}$"
+  - name: CLUSTER_NAME
+    default: coder-postgres
+    prompt: false
+  - name: DB_NAME
+    default: coder
+    prompt: false
+  - name: DB_SCHEMA
+    default: coder
+    prompt: false
+  - name: DB_USER
+    default: coder
+    prompt: false
+  - name: DB_PASSWORD
+    description: PostgreSQL password using URL-unreserved characters only.
+    default: coder
+    prompt: false
+    sensitive: true
+
+# The local build recipes resolve these inputs from their OCI archives.
+constants:
+  - name: PUBLISH_TEMPLATE
+    value: "###ZARF_PKG_TMPL_PUBLISH_TEMPLATE###"
+  - name: UPDATE_WORKSPACE
+    description: Existing owner/workspace or all outdated workspaces to update after publication.
+    value: "###ZARF_PKG_TMPL_UPDATE_WORKSPACE###"
+    pattern: "^$|^all$|^[A-Za-z0-9-]+/[A-Za-z0-9-]+$"
+  - name: CODER_IMAGE_DIGEST
+    value: "###ZARF_PKG_TMPL_CODER_IMAGE_DIGEST###"
+  - name: CODER_MODULES_IMAGE
+    value: "###ZARF_PKG_TMPL_CODER_MODULES_IMAGE###"
+  - name: PUBLISHER_IMAGE
+    value: "###ZARF_PKG_TMPL_PUBLISHER_IMAGE###"
+  - name: CODE_SERVER_IMAGE
+    value: "###ZARF_PKG_TMPL_CODE_SERVER_IMAGE###"
+  - name: WORKSPACE_IMAGE
+    value: "###ZARF_PKG_TMPL_WORKSPACE_IMAGE###"
+  - name: DUPE_TROOPER_IMAGE
+    value: "###ZARF_PKG_TMPL_DUPE_TROOPER_IMAGE###"
+  - name: DEJA_DOC_IMAGE
+    value: "###ZARF_PKG_TMPL_DEJA_DOC_IMAGE###"
+  - name: VSIX_IMAGE
+    value: "###ZARF_PKG_TMPL_VSIX_IMAGE###"
+
+components:
+  - name: coder-images
+    description: Locally built Coder Community control-plane image
+    required: true
+    only:
+      flavor: full
+    imageArchives:
+      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/coder-opentofu.oci.tar"
+        images:
+          - zarf.internal/coder-workspaces-coder:opentofu
+
+  - name: opentofu-coder-modules
+    description: Locally built read-only OpenTofu module payload
+    required: true
+    only:
+      flavor: full
+    imageArchives:
+      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/coder-modules.oci.tar"
+        images:
+          - zarf.internal/coder-modules:0.1.0
+
+  - name: cnpg
+    description: Deploy CloudNativePG and the Coder PostgreSQL database
+    required: true
+    only:
+      flavor: full
+    import:
+      url: oci://ghcr.io/fabian1heinrich/cnpg-zarf/cnpg:0.1.4@sha256:1d22fa46cf3f3e029b1399dfd598ac5bffe38d5a827977d1e828794f354b2edf
+
+  - name: postgres-connection
+    description: Provide Coder with the CNPG connection URL
+    required: true
+    only:
+      flavor: full
+    manifests:
+      - name: coder-postgres-connection
+        namespace: coder
+        files:
+          - postgres-connection.yaml
+
+  - name: coder
+    description: Deploy Coder Community with built-in offline provisioners
+    required: true
+    only:
+      flavor: full
+    healthChecks:
+      - name: coder
+        namespace: coder
+        apiVersion: apps/v1
+        kind: Deployment
+    manifests:
+      - name: coder-network-policy
+        namespace: coder
+        files:
+          - network-policy.yaml
+          - crd-discovery-rbac.yaml
+    charts:
+      # Coder chart 2.36.0, pinned to its OCI manifest.
+      - name: coder
+        version: 2.36.0
+        namespace: coder
+        url: oci://ghcr.io/coder/chart/coder@sha256:0937b0e588c420c2669bd41b089fd8087d793bed858be14c94399e8b259ccd2c
+        releaseName: coder
+        valuesFiles:
+          - coder-values.yaml
+
+  - name: coder-bootstrap
+    description: Create the initial Coder administrator and issue the template publisher credential
+    required: true
+    actions:
+      onDeploy:
+        after:
+          - cmd: |
+              set -eu
+              coder_url=http://coder.coder.svc.cluster.local
+              ./zarf tools kubectl -n coder rollout status deployment/coder --timeout=2m
+              ./zarf tools kubectl create namespace coder-template-publisher \
+                --dry-run=client -o yaml | ./zarf tools kubectl apply -f -
+
+              publisher_token="$(
+                ./zarf tools kubectl -n coder-template-publisher \
+                  get secret coder-template-publisher-auth \
+                  -o go-template='{{.data.token | base64decode}}' 2>/dev/null || true
+              )"
+              if test -n "${publisher_token}" && printf '%s\n' "${publisher_token}" |
+                ./zarf tools kubectl -n coder exec -i deploy/coder -- env \
+                  CODER_URL="${coder_url}" \
+                  /bin/sh -c '
+                    IFS= read -r CODER_SESSION_TOKEN
+                    export CODER_SESSION_TOKEN
+                    export HOME=/tmp/coder-publisher-token-check
+                    mkdir -p "$HOME"
+                    trap "rm -rf /tmp/coder-publisher-token-check" EXIT
+                    /opt/coder whoami >/dev/null 2>&1
+                  '
+              then
+                exit 0
+              fi
+
+              # shellcheck disable=SC2016
+              publisher_token="$(
+                printf '%s\n' "${ZARF_VAR_CODER_ADMIN_PASSWORD}" |
+                  ./zarf tools kubectl -n coder exec -i deploy/coder -- env \
+                    CODER_URL="${coder_url}" \
+                    CODER_FIRST_USER_USERNAME=admin \
+                    CODER_FIRST_USER_FULL_NAME="Coder Admin" \
+                    CODER_FIRST_USER_EMAIL=admin@coder.local \
+                    CODER_FIRST_USER_TRIAL=false \
+                    CODER_PUBLISHER_TOKEN_LIFETIME=168h \
+                    /bin/sh -c '
+                      IFS= read -r CODER_FIRST_USER_PASSWORD
+                      export CODER_FIRST_USER_PASSWORD
+                      export HOME=/tmp/coder-admin-bootstrap
+                      mkdir -p "$HOME"
+                      trap "rm -rf /tmp/coder-admin-bootstrap" EXIT
+                      /opt/coder login "$CODER_URL" >/dev/null 2>&1
+                      /opt/coder tokens remove --delete coder-template-publisher >/dev/null 2>&1 || true
+                      /opt/coder tokens create --name coder-template-publisher --lifetime "$CODER_PUBLISHER_TOKEN_LIFETIME"
+                    '
+              )"
+              printf '%s' "${publisher_token}" |
+                ./zarf tools kubectl -n coder-template-publisher \
+                  create secret generic coder-template-publisher-auth \
+                  --from-file=token=/dev/stdin \
+                  --dry-run=client \
+                  -o yaml |
+                ./zarf tools kubectl apply -f -
+              ./zarf tools kubectl -n coder delete \
+                secret/coder-template-publisher-auth --ignore-not-found
+            description: Bootstrap the Coder administrator and template publisher credential
+            mute: true
+
+  # Keep local template transport here so this definition is the only local
+  # package entry point.
+  - name: template-artifacts
+    description: Transport the local template runner, workspace images, and Git repositories
+    required: false
+    default: true
+    imageArchives:
+      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/coderd-provider-opentofu.oci.tar"
+        images:
+          - zarf.internal/coder-workspaces-coderd-provider:opentofu
+      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/code-server.oci.tar"
+        images:
+          - zarf.internal/coder-workspaces-code-server:local
+      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/python-workspace.oci.tar"
+        images:
+          - zarf.internal/coder-workspaces-python-workspace:local
+      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/dupe-trooper.oci.tar"
+        images:
+          - zarf.internal/coder-workspaces-dupe-trooper:local
+      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/deja-doc.oci.tar"
+        images:
+          - zarf.internal/coder-workspaces-deja-doc:local
+      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/python-vsix.oci.tar"
+        images:
+          - zarf.internal/coder-workspaces-python-vsix:local
+    repos:
+      - https://github.com/fabian1heinrich/uv-devcontainer.git@e637e71ed9bfcd2a2181c0b0c8d3050f1beb8483
+      - https://github.com/fabian1heinrich/coder-dotfiles.git@4d8bd9bf877c32e257f671ab30c86e898261891e
+
+  - name: publish-template
+    description: Publish the Coder workspace templates using artifacts already loaded into Zarf
+    required: false
+    default: true
+    actions:
+      onDeploy:
+        before:
+          - cmd: |
+              set -eu
+              ./zarf tools kubectl -n coder rollout status deployment/coder --timeout=2m
+              ./zarf tools kubectl -n coder-template-publisher \
+                delete job template-publisher \
+                --ignore-not-found --wait=true
+            description: Prepare a fresh template publication Job
+            mute: true
+    manifests:
+      - name: coder-workspace-template-publisher
+        namespace: coder-template-publisher
+        kustomizeAllowAnyDirectory: true
+        kustomizations:
+          - template-publisher
+    healthChecks:
+      - name: template-publisher
+        namespace: coder-template-publisher
+        apiVersion: batch/v1
+        kind: Job
+
+documentation:
+  readme: README.md

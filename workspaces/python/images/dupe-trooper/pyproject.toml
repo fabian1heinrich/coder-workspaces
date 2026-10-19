@@ -1,0 +1,27 @@
+[project]
+name = "dupe-trooper"
+version = "0.0.0"
+description = "Managed offline development environment for Dupe Trooper"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "httpx==0.28.1",
+  "rich==14.1.0",
+]
+
+[build-system]
+requires = ["setuptools==80.9.0", "wheel==0.45.1"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+build = [
+  "setuptools==80.9.0",
+  "wheel==0.45.1",
+]
+dev = [
+  "pytest==8.4.1",
+  "ruff==0.12.1",
+]
+
+[tool.uv]
+no-build-isolation = true
+package = true

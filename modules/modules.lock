@@ -1,0 +1,6 @@
+# name|version|archive sha256|source URL
+code-server|1.5.2|0cb4af862e94e4f85ca0f8dc22775194c308299797de1d7e1b6aa1e11f4052bc|https://registry.coder.com/download/coder/1.5.2-code-server.tar.gz
+coder-login|1.1.1|805bd52759c6e9cb6dab2586f7ddc19eeeb03d50229cb362fcacf888f493c017|https://registry.coder.com/download/coder/1.1.1-coder-login.tar.gz
+dotfiles|1.4.2|5b513769bf7e2655b35becf067bbdc43c2ae526c826092b82b97adbb51a2b7c9|https://registry.coder.com/download/coder/1.4.2-dotfiles.tar.gz
+git-clone|2.0.3|0f73f0e0f8a3c91fa70345cf8c864ade2000fea86b00c39006d5479772913814|https://registry.coder.com/download/coder/2.0.3-git-clone.tar.gz
+git-config|1.0.34|7500248729c2b4950c83de274d924d97d0d6eddf84954e2b170d59ea422057c6|https://registry.coder.com/download/coder/1.0.34-git-config.tar.gz

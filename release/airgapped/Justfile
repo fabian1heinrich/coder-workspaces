@@ -1,0 +1,10 @@
+set shell := ["direnv", "exec", ".", "bash", "-euo", "pipefail", "-c"]
+
+# Mirror the Flux workspace source without activating it.
+mirror:
+    SSL_CERT_FILE="$REGISTRY_CA_FILE" ZARF_INIT_REGISTRY_PUSH_PASSWORD="$(kubectl -n "$REGISTRY_WRITER_SECRET_NAMESPACE" get secret "$REGISTRY_WRITER_SECRET_NAME" -o "jsonpath={.data.$REGISTRY_WRITER_SECRET_KEY}" | base64 --decode)" zarf package mirror-resources ./zarf-package-coder-workspaces-amd64-*.tar.zst --registry-url "$REGISTRY_URL" --registry-push-username "$REGISTRY_PUSH_USERNAME" --components=workspace-source --images --no-img-checksum --confirm
+
+# Mirror runtime images before mirroring the Flux workspace source.
+mirror-all:
+    SSL_CERT_FILE="$REGISTRY_CA_FILE" ZARF_INIT_REGISTRY_PUSH_PASSWORD="$(kubectl -n "$REGISTRY_WRITER_SECRET_NAMESPACE" get secret "$REGISTRY_WRITER_SECRET_NAME" -o "jsonpath={.data.$REGISTRY_WRITER_SECRET_KEY}" | base64 --decode)" zarf package mirror-resources ./zarf-package-coder-workspaces-images-amd64-*.tar.zst --registry-url "$REGISTRY_URL" --registry-push-username "$REGISTRY_PUSH_USERNAME" --components=workspace-runtime,workspace-tooling,publisher-runtime --images --no-img-checksum --confirm
+    just mirror

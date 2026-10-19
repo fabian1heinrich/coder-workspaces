@@ -1,0 +1,10 @@
+# Build template. The consuming application source substitutes this exact digest.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coder-workspaces-release
+  namespace: flux-system
+  labels:
+    reconcile.fluxcd.io/watch: Enabled
+data:
+  CODER_WORKSPACES_DIGEST: "###SOURCE_DIGEST###"

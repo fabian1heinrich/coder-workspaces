@@ -1,0 +1,99 @@
+# Helm values for the local Coder control plane.
+coder:
+  image:
+    # The pinned chart concatenates repo and tag. Split @sha256:<digest> at
+    # the colon so its rendered image is a valid digest reference.
+    repo: zarf.internal/coder-workspaces-coder@sha256
+    tag: "###ZARF_CONST_CODER_IMAGE_DIGEST###"
+    pullPolicy: IfNotPresent
+    pullSecrets:
+      - name: private-registry
+
+  env:
+    - name: CODER_PG_CONNECTION_URL
+      valueFrom:
+        secretKeyRef:
+          name: coder-postgres-connection
+          key: CODER_PG_CONNECTION_URL
+    - name: CODER_PROVISIONER_DAEMONS
+      value: "2"
+    - name: CODER_TELEMETRY_ENABLE
+      value: "false"
+    - name: CODER_UPDATE_CHECK
+      value: "false"
+    - name: CODER_DISABLE_TEMPLATE_BUILDER
+      value: "true"
+    - name: CODER_OAUTH2_GITHUB_DEFAULT_PROVIDER_ENABLE
+      value: "false"
+    - name: CODER_AI_GATEWAY_ENABLED
+      value: "false"
+    - name: CODER_BLOCK_DIRECT
+      value: "true"
+    - name: CODER_DERP_SERVER_STUN_ADDRESSES
+      value: disable
+    - name: HOME
+      value: /home/coder
+
+  # Coder 2.36 parses CODER_EXTERNAL_AUTH_* as an indexed provider list before
+  # handling the standalone default-provider option. Use its equivalent CLI
+  # flag to avoid that environment-variable prefix collision.
+  commandArgs:
+    - server
+    - --external-auth-github-default-provider-enable=false
+
+  # Workspace agents reach Coder through the namespace-local ClusterIP Service.
+  # Users access the same Service through kubectl port-forward for this PoC.
+  envUseClusterAccessURL: true
+
+  # External exposure is environment-specific. A LoadBalancer service makes
+  # Helm installs hang on clusters (including Kind) without an LB controller.
+  service:
+    type: ClusterIP
+
+  # Community Edition uses built-in provisioners, so the Coder service account
+  # needs the namespace-scoped permissions required by workspace templates.
+  serviceAccount:
+    workspacePerms: true
+    enableDeployments: true
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+
+  podSecurityContext:
+    fsGroup: 1000
+    fsGroupChangePolicy: OnRootMismatch
+
+  volumes:
+    - name: coder-home
+      emptyDir: {}
+    - name: coder-modules
+      image:
+        reference: "###ZARF_CONST_CODER_MODULES_IMAGE###"
+        pullPolicy: IfNotPresent
+    - name: tmp
+      emptyDir: {}
+  volumeMounts:
+    - name: coder-home
+      mountPath: /home/coder
+    - name: coder-modules
+      mountPath: /opt/coder-modules
+      readOnly: true
+    - name: tmp
+      mountPath: /tmp
+
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+    limits:
+      cpu: "4"
+      memory: 4Gi
