@@ -45,47 +45,11 @@ build-all: build-platform-artifacts build-template-artifacts
 
 # Create the full deployable package from published registry images.
 package-registry:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    [[ "${K8S_WORKSPACE_IMAGE:-}" =~ ^[^[:space:]@]+:[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64}$ ]] || {
-      echo "K8S_WORKSPACE_IMAGE must include a SemVer tag and sha256 digest" >&2
-      exit 1
-    }
-    [[ "${K8S_VSIX_IMAGE:-}" =~ ^[^[:space:]@]+:[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64}$ ]] || {
-      echo "K8S_VSIX_IMAGE must include a SemVer tag and sha256 digest" >&2
-      exit 1
-    }
-    k8s_workspace_name="${K8S_WORKSPACE_IMAGE%@*}"
-    k8s_workspace_digest_ref="${k8s_workspace_name%:*}@${K8S_WORKSPACE_IMAGE#*@}"
-    k8s_vsix_name="${K8S_VSIX_IMAGE%@*}"
-    k8s_vsix_digest_ref="${k8s_vsix_name%:*}@${K8S_VSIX_IMAGE#*@}"
-    zarf package create dev --flavor full --confirm --output . \
-      --set "K8S_WORKSPACE_IMAGE=$K8S_WORKSPACE_IMAGE" \
-      --set "K8S_WORKSPACE_DIGEST_REF=$k8s_workspace_digest_ref" \
-      --set "K8S_VSIX_IMAGE=$K8S_VSIX_IMAGE" \
-      --set "K8S_VSIX_DIGEST_REF=$k8s_vsix_digest_ref"
+    zarf package create dev --flavor full --confirm --output .
 
 # Create a templates-only package from published registry images.
 package-registry-templates:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    [[ "${K8S_WORKSPACE_IMAGE:-}" =~ ^[^[:space:]@]+:[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64}$ ]] || {
-      echo "K8S_WORKSPACE_IMAGE must include a SemVer tag and sha256 digest" >&2
-      exit 1
-    }
-    [[ "${K8S_VSIX_IMAGE:-}" =~ ^[^[:space:]@]+:[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64}$ ]] || {
-      echo "K8S_VSIX_IMAGE must include a SemVer tag and sha256 digest" >&2
-      exit 1
-    }
-    k8s_workspace_name="${K8S_WORKSPACE_IMAGE%@*}"
-    k8s_workspace_digest_ref="${k8s_workspace_name%:*}@${K8S_WORKSPACE_IMAGE#*@}"
-    k8s_vsix_name="${K8S_VSIX_IMAGE%@*}"
-    k8s_vsix_digest_ref="${k8s_vsix_name%:*}@${K8S_VSIX_IMAGE#*@}"
-    zarf package create dev --confirm --output . \
-      --set "K8S_WORKSPACE_IMAGE=$K8S_WORKSPACE_IMAGE" \
-      --set "K8S_WORKSPACE_DIGEST_REF=$k8s_workspace_digest_ref" \
-      --set "K8S_VSIX_IMAGE=$K8S_VSIX_IMAGE" \
-      --set "K8S_VSIX_DIGEST_REF=$k8s_vsix_digest_ref"
+    zarf package create dev --confirm --output .
 
 # Build local images and create the full deployable package from their OCI archives.
 package-local: build-all
@@ -186,18 +150,6 @@ build-release-all: build-release
     repository_root="$(git rev-parse --show-toplevel)"
     bundle="$BUILD_DIR/coder-workspaces"
     release_id="$(sed -n 's/^release_id=//p' "$bundle/RELEASE-METADATA")"
-    [[ "${K8S_WORKSPACE_IMAGE:-}" =~ ^[^[:space:]@]+:[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64}$ ]] || {
-      echo "K8S_WORKSPACE_IMAGE must include a SemVer tag and sha256 digest" >&2
-      exit 1
-    }
-    [[ "${K8S_VSIX_IMAGE:-}" =~ ^[^[:space:]@]+:[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64}$ ]] || {
-      echo "K8S_VSIX_IMAGE must include a SemVer tag and sha256 digest" >&2
-      exit 1
-    }
-    k8s_workspace_name="${K8S_WORKSPACE_IMAGE%@*}"
-    k8s_workspace_digest_ref="${k8s_workspace_name%:*}@${K8S_WORKSPACE_IMAGE#*@}"
-    k8s_vsix_name="${K8S_VSIX_IMAGE%@*}"
-    k8s_vsix_digest_ref="${k8s_vsix_name%:*}@${K8S_VSIX_IMAGE#*@}"
     images_package="$repository_root/zarf-package-coder-workspaces-images-amd64-${release_id}.tar.zst"
     rm -f -- "$images_package"
     zarf package create release/images \
@@ -205,14 +157,12 @@ build-release-all: build-release
       --registry-override "registry.invalid=ghcr.io" \
       --output "$repository_root" \
       --set RELEASE_ID="$release_id" \
-      --set K8S_WORKSPACE_DIGEST_REF="$k8s_workspace_digest_ref" \
-      --set K8S_VSIX_DIGEST_REF="$k8s_vsix_digest_ref" \
       --confirm
     cp -- "$images_package" "$bundle/"
     printf '%s\n' \
       "python_workspace_image=ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:0.1.0@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266" \
-      "k8s_workspace_image=$K8S_WORKSPACE_IMAGE" \
-      "k8s_vsix_image=$K8S_VSIX_IMAGE" \
+      "k8s_workspace_image=ghcr.io/fabian1heinrich/coder-workspaces/k8s-workspace:0.1.0@sha256:ef4b0b979aaa284ea8fef5040b6a8d9bb508da8d62d7d7b9bcc227b123d40493" \
+      "k8s_vsix_image=ghcr.io/fabian1heinrich/coder-workspaces/k8s-vsix:0.1.0@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836" \
       "code_server_image=ghcr.io/fabian1heinrich/coder-workspaces/code-server:0.1.0@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8" \
       "python_vsix_image=ghcr.io/fabian1heinrich/coder-workspaces/python-vsix:0.1.0@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b" \
       >> "$bundle/RELEASE-METADATA"

@@ -26,15 +26,12 @@ publisher uses a dedicated API token and runs with its OpenTofu backend in
 ## Published-image deployment
 
 ```sh
-export K8S_WORKSPACE_IMAGE='ghcr.io/fabian1heinrich/coder-workspaces/k8s-workspace:0.1.0@sha256:<64-hex-digest>'
-export K8S_VSIX_IMAGE='ghcr.io/fabian1heinrich/coder-workspaces/k8s-vsix:0.1.0@sha256:<64-hex-digest>'
 just package-registry
 zarf package deploy zarf-package-coder-registry-amd64-0.1.0-full.tar.zst \
   --components=template-artifacts,publish-template --confirm
 ```
 
-The Kubernetes image variables are required digest-pinned references published
-by the container-image workflow.
+The package definition records every published image by immutable digest.
 
 ## Locally built deployment
 
@@ -52,8 +49,6 @@ On an existing platform, publish both templates and update every outdated
 workspace:
 
 ```sh
-export K8S_WORKSPACE_IMAGE='ghcr.io/fabian1heinrich/coder-workspaces/k8s-workspace:0.1.0@sha256:<64-hex-digest>'
-export K8S_VSIX_IMAGE='ghcr.io/fabian1heinrich/coder-workspaces/k8s-vsix:0.1.0@sha256:<64-hex-digest>'
 just package-registry-templates
 zarf package deploy zarf-package-coder-registry-amd64-0.1.0.tar.zst \
   --components=template-artifacts,publish-template --confirm

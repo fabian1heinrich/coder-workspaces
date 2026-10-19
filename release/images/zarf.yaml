@@ -12,7 +12,7 @@ components:
     required: true
     images:
       - registry.invalid/fabian1heinrich/coder-workspaces/python-workspace@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266
-      - "###ZARF_PKG_TMPL_K8S_WORKSPACE_DIGEST_REF###"
+      - registry.invalid/fabian1heinrich/coder-workspaces/k8s-workspace@sha256:ef4b0b979aaa284ea8fef5040b6a8d9bb508da8d62d7d7b9bcc227b123d40493
 
   - name: workspace-tooling
     description: Read-only code-server and VSIX payloads 0.1.0
@@ -20,7 +20,7 @@ components:
     images:
       - registry.invalid/fabian1heinrich/coder-workspaces/code-server@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8
       - registry.invalid/fabian1heinrich/coder-workspaces/python-vsix@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b
-      - "###ZARF_PKG_TMPL_K8S_VSIX_DIGEST_REF###"
+      - registry.invalid/fabian1heinrich/coder-workspaces/k8s-vsix@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836
 
   - name: publisher-runtime
     description: Offline OpenTofu and Coder provider runner

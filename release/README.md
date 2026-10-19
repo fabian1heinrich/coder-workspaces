@@ -8,14 +8,10 @@ Use the root `build-release` or `copy-release` recipes for template changes and
 their `-all` variants when image references change or complete recovery media
 is needed. Mirror images before the Flux source that references them.
 
-For an `-all` build, set `K8S_WORKSPACE_IMAGE` and `K8S_VSIX_IMAGE` to the
-SemVer-tagged, digest-pinned references published by the container image
-workflow, for example `ghcr.io/.../k8s-workspace:0.1.0@sha256:<digest>` and
-`ghcr.io/.../k8s-vsix:0.1.0@sha256:<digest>`. The values are captured in the
-images package; an unversioned or digest-free reference is rejected.
-`RELEASE-METADATA` records the operator-facing version-and-digest references;
-the Zarf transport image list remains digest-only for registry-tool
-compatibility.
+Published image references are pinned in `images/zarf.yaml` and recorded as
+SemVer-and-digest references in `RELEASE-METADATA`. Update both consumers when
+an image version changes. The Zarf transport image list remains digest-only for
+registry-tool compatibility.
 
 Consume these transport archives only with `zarf package mirror-resources`;
 never deploy them.

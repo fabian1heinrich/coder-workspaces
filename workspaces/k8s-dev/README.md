@@ -9,10 +9,9 @@ code-server and approved extensions are separate read-only OCI image volumes.
 digest or checksum and verifies the non-root `coder` account contract.
 
 Use `just build-template-artifacts` for the local OCI archive. The image
-workflow publishes `sha-<commit>` traceability tags and mutable SemVer aliases.
-Resolve the SemVer alias to a digest and set `K8S_WORKSPACE_IMAGE` to
-`.../k8s-workspace:<version>@sha256:<digest>` when creating a registry-backed
-or production images package.
+workflow publishes `sha-<commit>` traceability tags and SemVer tags. After
+publishing a new version, update its tag-and-digest reference in the template
+publisher and its digest-only reference in each Zarf transport package.
 
 To upgrade the base, update its exact release tag and multi-architecture digest
 in both `FROM` instructions and the matching source-image label. To upgrade a
@@ -24,10 +23,9 @@ client, update its version, source URL, checksum, and OCI label together.
 Red Hat YAML 2.0.0 from `extensions/k8s-extensions.lock`. The `k8s-vsix` image
 is mounted at `/opt/vsix` and installed locally into persistent storage.
 
-Set `K8S_VSIX_IMAGE` to
-`.../k8s-vsix:<version>@sha256:<digest>` alongside `K8S_WORKSPACE_IMAGE` when
-creating a registry-backed or production images package. Upgrade each lock
-entry's version, URL, and checksum together.
+After publishing a new `k8s-vsix` version, update its tag-and-digest reference
+and every Zarf transport digest together with each lock entry's version, URL,
+and checksum.
 
 ## Cluster access
 
