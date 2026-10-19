@@ -47,10 +47,13 @@ RUN --network=none set -eu; \
 
 FROM scratch
 
+ARG IMAGE_VERSION=0.1.0
+
 LABEL org.opencontainers.image.title="Coder Python approved VSIX extension set" \
   org.opencontainers.image.description="Offline VS Code extension payload for the Python workspace" \
   org.opencontainers.image.source="https://github.com/fabian1heinrich/coder-workspaces" \
-  org.opencontainers.image.version="0.1.0" \
+  org.opencontainers.image.version="${IMAGE_VERSION}" \
+  io.coder.semver-policy="immutable-v1" \
   io.coder.extension-set="python" \
   io.coder.code-server.version="4.135.0" \
   io.coder.code-server.image="ghcr.io/coder/code-server@sha256:ccd326184d71efc5ebb94155eda7bb30153902342a35dbc8525450d81aa55012"

@@ -7,7 +7,17 @@ code-server, and VSIX images and changes only when those artifacts change.
 Use the repository-root `build-release` or `copy-release` recipes for ordinary
 template changes. Use their `-all` variants when image references change or
 when preparing complete recovery media. Images must reach Zot before the Flux
-source that references them.
+source that references them. Generated Zarf package archives are written to the
+repository root.
+
+For an `-all` build, set `K8S_WORKSPACE_IMAGE` and `K8S_VSIX_IMAGE` to the
+SemVer-tagged, digest-pinned references published by the container image
+workflow, for example `ghcr.io/.../k8s-workspace:0.1.0@sha256:<digest>` and
+`ghcr.io/.../k8s-vsix:0.1.0@sha256:<digest>`. The values are captured in the
+images package; an unversioned or digest-free reference is rejected.
+`RELEASE-METADATA` records the operator-facing version-and-digest references;
+the Zarf transport image list remains digest-only for registry-tool
+compatibility.
 
 The packages are transport archives. Consume them only with
 `zarf package mirror-resources`; never deploy them.

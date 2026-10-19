@@ -5,9 +5,9 @@ the local and production publisher Jobs. Credentials and production platform
 values are supplied by the consuming environment.
 
 The publisher manages both the `python-workspace` and `k8s-dev` templates.
-It passes the digest-pinned `dupe-trooper` and `deja-doc` workspace images into
-both templates; those optional images become entries in each template's
-immutable project selector alongside `sandbox`.
+It passes the digest-pinned Python runtime, extension, and optional project
+images only to `python-workspace`. `k8s-dev` receives its dedicated workspace
+and Kubernetes VSIX images; it has no Python or project-image inputs.
 
 The root kustomization contains the shared Job, namespace-scoped state-backend
 RBAC, and publisher source. The local overlay under `dev/template-publisher/`
@@ -17,7 +17,16 @@ consuming GitOps repository supplies only its target namespace, name prefix,
 credentials, registry endpoint, and environment values. Development and the
 production contract use the dedicated `coder-template-publisher` namespace to
 isolate the publisher runtime, token, and state. `CODER_WORKSPACES_NAMESPACE`
-independently selects where Coder provisions workspace resources.
+independently selects where Coder provisions workspace resources. The consumer
+also supplies `CODER_WORKSPACES_KUBERNETES_SERVICE_ACCOUNT` and
+`CODER_WORKSPACES_KUBERNETES_TARGET_NAMESPACE`; the named ServiceAccount and
+its least-privilege RBAC remain environment-owned. It supplies the published
+workspace image digest as `CODER_WORKSPACES_K8S_WORKSPACE_DIGEST`; the source
+release pairs that digest with its operator-facing SemVer. It similarly
+supplies `CODER_WORKSPACES_K8S_VSIX_DIGEST` for the `k8s-vsix:0.1.0` payload.
+The Kubernetes template's optional repository is configured independently
+through `CODER_WORKSPACES_K8S_DEFAULT_REPOSITORY` and
+`CODER_WORKSPACES_K8S_DEFAULT_GIT_BRANCH`.
 
 OpenTofu uses its Kubernetes backend. State is stored in
 `Secret/tfstate-default-<PUBLISHER_STATE_SUFFIX>` in the Job namespace, and a
@@ -33,28 +42,21 @@ Treat the state Secret as sensitive backup data. The Kubernetes backend has a
 1 MiB Secret limit; this configuration tracks only the two Coder template
 resources and their metadata.
 
-The local package's `PUBLISH_TEMPLATE` create-time setting scopes the existing
-Job's import and apply to `python`, `k8s-dev`, or `all` using OpenTofu targeting.
-Both resources remain configured in the shared state; selection never removes
-the other template. The `all` selection applies both templates, including any
-changes deferred during targeted iteration.
-
-The local `UPDATE_WORKSPACE` setting defaults to `all`. After publication, the
-Job lists outdated workspaces belonging to the selected template or templates
-and updates them sequentially using its bundled Coder CLI and publisher token.
-Set it to an existing `owner/workspace` to update only that workspace, or to an
-empty value to publish only. Existing parameter values are reused and new
+The local packages apply both templates. After publication, the Job lists and
+updates all outdated workspaces belonging to either template using its bundled
+Coder CLI and publisher token. Existing parameter values are reused and new
 parameters use their defaults; new required values without defaults need user
 input in Coder. An outdated workspace is stopped if running, updated, and
 started. This adds no Zarf actions or host CLI dependency.
 
 Set the template version in `template.tf`. A content hash is appended because
 Coder template-version names are immutable. Use the
-[local Zarf commands](../dev/README.md). The local build recipes resolve image
-inputs from the OCI archives they create.
+[local Zarf commands](../dev/README.md). The registry-backed package pulls image
+inputs by immutable digest; the local package uses OCI archives built from this
+checkout.
 
 Production publication never updates existing workspaces automatically. Its
-digest-pinned runner and workspace images must be mirrored before the Flux
-source is published. The source owns those image digests and the Job contract;
+digest-pinned runner, workspace, and tooling images must be mirrored before the
+Flux source is published. The source owns those image digests and the Job contract;
 the consumer supplies registry, state suffix, pull-secret, storage, Coder, Git,
 authentication, and CA values through Flux substitutions.

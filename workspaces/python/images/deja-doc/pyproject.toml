@@ -4,7 +4,11 @@ version = "0.0.0"
 description = "Managed offline development environment for Deja Doc"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-  "pydantic==2.11.7",
+  "docling-core==2.102.0",
+  "docling-slim[convert-core,format-office,format-opendocument,format-pdf-pypdfium2,format-web]==2.140.0",
+  "mcp==2.3.0",
+  "pydantic==2.14.1",
+  "pydantic-settings==2.16.0",
   "typer==0.16.0",
 ]
 
@@ -19,6 +23,7 @@ build = [
 ]
 dev = [
   "pytest==8.4.1",
+  "pytest-asyncio==1.4.0",
   "ruff==0.12.1",
 ]
 

@@ -1,4 +1,4 @@
-# Self-contained Coder template for Kubernetes workspaces.
+# Self-contained Coder template for operating Kubernetes clusters.
 terraform {
   required_version = "= 1.12.1"
 

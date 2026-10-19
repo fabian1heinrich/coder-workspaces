@@ -1,35 +1,10 @@
-data "coder_parameter" "project" {
-  name         = "project"
-  display_name = "Project"
-  description  = "Choose a managed project profile or sandbox for custom repository and workspace image selections."
-  type         = "string"
-  form_type    = "dropdown"
-  default      = "sandbox"
-  order        = 1
-  mutable      = false
-  icon         = "/icon/python.svg"
-
-  dynamic "option" {
-    for_each = local.project_order
-
-    content {
-      name        = option.value
-      description = local.projects[option.value].description
-      value       = option.value
-      icon        = "/icon/python.svg"
-    }
-  }
-}
-
 data "coder_parameter" "repository" {
-  count = data.coder_parameter.project.value == "sandbox" ? 1 : 0
-
   name         = "repository"
   display_name = "Mirrored repository"
-  description  = "Owner/repository path in the internal Zarf Gitea service. Leave empty to start without cloning a repository."
+  description  = "Owner/repository path in the internal Git service. Leave empty to start without cloning a repository."
   type         = "string"
   default      = var.default_repository
-  order        = 2
+  order        = 1
   mutable      = false
   icon         = "/icon/git.svg"
 
@@ -40,14 +15,14 @@ data "coder_parameter" "repository" {
 }
 
 data "coder_parameter" "git_branch" {
-  count = try(data.coder_parameter.repository[0].value, "") != "" ? 1 : 0
+  count = data.coder_parameter.repository.value == "" ? 0 : 1
 
   name         = "git_branch"
   display_name = "Source revision"
   description  = "Branch or immutable revision to clone from the mirrored repository."
   type         = "string"
   default      = var.default_git_branch
-  order        = 3
+  order        = 2
   mutable      = false
   icon         = "/icon/git.svg"
 
@@ -57,107 +32,14 @@ data "coder_parameter" "git_branch" {
   }
 }
 
-data "coder_parameter" "workspace_image" {
-  count = data.coder_parameter.project.value == "sandbox" ? 1 : 0
-
-  name         = "workspace_image"
-  display_name = "Workspace Image"
-  description  = "Choose an approved environment image for the sandbox."
-  type         = "string"
-  form_type    = "dropdown"
-  default      = "python-3.13"
-  order        = 4
-  mutable      = true
-  icon         = "/icon/python.svg"
-
-  dynamic "option" {
-    for_each = local.workspace_image_order
-
-    content {
-      name        = option.value
-      description = local.workspace_images[option.value].description
-      value       = option.value
-      icon        = "/icon/python.svg"
-    }
-  }
-}
-
-data "coder_parameter" "cpu" {
-  count = data.coder_parameter.customize_specs.value ? 1 : 0
-
-  name         = "cpu"
-  display_name = "CPU cores"
-  description  = "CPU request and limit for the workspace container."
-  type         = "number"
-  form_type    = "slider"
-  default      = local.workspace_size.cpu
-  order        = 7
-  mutable      = true
-  icon         = "/icon/memory.svg"
-
-  validation {
-    min = 1
-    max = 8
-  }
-}
-
-data "coder_parameter" "memory" {
-  count = data.coder_parameter.customize_specs.value ? 1 : 0
-
-  name         = "memory"
-  display_name = "Memory (GiB)"
-  description  = "Memory request and limit for the workspace container."
-  type         = "number"
-  form_type    = "slider"
-  default      = local.workspace_size.memory
-  order        = 8
-  mutable      = true
-  icon         = "/icon/memory.svg"
-
-  validation {
-    min = 2
-    max = 32
-  }
-}
-
-data "coder_parameter" "home_disk_size" {
-  name         = "home_disk_size"
-  display_name = "Persistent home disk (GiB)"
-  description  = "Size of the persistent volume mounted at /home/coder. It can be increased later when the StorageClass supports expansion."
-  type         = "number"
-  form_type    = "slider"
-  default      = 20
-  order        = 9
-  mutable      = true
-  icon         = "/emojis/1f4be.png"
-
-  validation {
-    min       = 10
-    max       = 200
-    monotonic = "increasing"
-  }
-}
-
-data "coder_parameter" "enable_dotfiles" {
-  name         = "enable_dotfiles"
-  display_name = "Configure dotfiles"
-  description  = "Apply the centrally packaged dotfiles when the workspace starts."
-  type         = "bool"
-  form_type    = "switch"
-  default      = true
-  order        = 10
-  mutable      = true
-  icon         = "/icon/dotfiles.svg"
-}
-
 data "coder_parameter" "workspace_size" {
   name         = "workspace_size"
-  display_name = "Workspace Size"
+  display_name = "Workspace size"
   description  = "Choose the scheduled CPU and memory capacity for the workspace."
   type         = "string"
   form_type    = "dropdown"
-  default      = local.project.recommended_size
-  order        = 5
+  default      = "standard"
+  order        = 3
   mutable      = true
   icon         = "/icon/memory.svg"
 
@@ -180,9 +62,65 @@ data "coder_parameter" "customize_specs" {
   type         = "bool"
   form_type    = "switch"
   default      = false
+  order        = 4
+  mutable      = true
+  icon         = "/icon/memory.svg"
+}
+
+data "coder_parameter" "cpu" {
+  count = data.coder_parameter.customize_specs.value ? 1 : 0
+
+  name         = "cpu"
+  display_name = "CPU cores"
+  description  = "CPU request and limit for the workspace container."
+  type         = "number"
+  form_type    = "slider"
+  default      = local.workspace_size.cpu
+  order        = 5
+  mutable      = true
+  icon         = "/icon/memory.svg"
+
+  validation {
+    min = 1
+    max = 8
+  }
+}
+
+data "coder_parameter" "memory" {
+  count = data.coder_parameter.customize_specs.value ? 1 : 0
+
+  name         = "memory"
+  display_name = "Memory (GiB)"
+  description  = "Memory request and limit for the workspace container."
+  type         = "number"
+  form_type    = "slider"
+  default      = local.workspace_size.memory
   order        = 6
   mutable      = true
   icon         = "/icon/memory.svg"
+
+  validation {
+    min = 2
+    max = 32
+  }
+}
+
+data "coder_parameter" "home_disk_size" {
+  name         = "home_disk_size"
+  display_name = "Persistent home disk (GiB)"
+  description  = "Size of the persistent /home/coder directory. It can be increased when the StorageClass supports expansion, but cannot be reduced."
+  type         = "number"
+  form_type    = "slider"
+  default      = local.default_home_disk_size
+  order        = 7
+  mutable      = true
+  icon         = "/emojis/1f4be.png"
+
+  validation {
+    min       = 10
+    max       = 200
+    monotonic = "increasing"
+  }
 }
 
 data "coder_workspace" "me" {}

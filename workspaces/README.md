@@ -1,94 +1,84 @@
 # Workspaces
 
-This directory owns the `python-workspace` and `k8s-dev` templates, their shared
-runtime artifacts, and independently versioned project environment images.
-Both templates retain independent template source and versions.
-The template publisher makes the project environments available as immutable
-project choices only when their digest-pinned references are supplied.
+This directory owns two independent Coder templates for disconnected
+Kubernetes environments:
 
-| File                                                      | Contents                                                         |
-| --------------------------------------------------------- | ---------------------------------------------------------------- |
-| `python/images/python.Containerfile`                      | Shared runtime and locked project-image build targets            |
-| `python/images/code-server.Containerfile`                 | Read-only code-server payload                                    |
-| `python/extensions/python-extensions.Containerfile`       | Approved, version- and checksum-pinned VSIX payload              |
-| `python/extensions/python-extensions.lock`                | Approved VSIX versions, sources, platforms, and checksums        |
-| `python/images/dupe-trooper/`                             | Current locked `dupe-trooper` uv environment                     |
-| `python/images/deja-doc/`                                 | Current locked `deja-doc` uv environment                         |
+- `python-workspace` is a Python 3.13 development environment with approved
+  extensions and optional locked project environments.
+- `k8s-dev` is a language-neutral operations environment for working with a
+  Kubernetes cluster through `kubectl`, Kustomize, and Helm.
 
-The template mounts code-server at `/opt/vscode-server` and extensions at
-`/opt/vsix` using read-only OCI image volumes. It installs extensions locally
-into the persistent `/home/coder` volume; repositories, settings, caches, and
-Python environments persist there as well. Workspace startup does not contact
-package managers, extension marketplaces, or public artifact registries.
-The workspace account, Coder terminals, and code-server integrated terminals
-use zsh by default.
+| Path                                                | Contents                                                |
+| --------------------------------------------------- | ------------------------------------------------------- |
+| `python/images/python.Containerfile`                | Python runtime and locked project-image build targets   |
+| `python/images/code-server.Containerfile`           | Shared read-only code-server payload                    |
+| `python/extensions/python-extensions.Containerfile` | Approved Python VSIX payload                            |
+| `python/extensions/python-extensions.lock`          | VSIX versions, sources, platforms, and checksums        |
+| `python/images/dupe-trooper/`                       | Locked `dupe-trooper` uv environment                    |
+| `python/images/deja-doc/`                           | Locked `deja-doc` uv environment                        |
+| `k8s-dev/`                                          | Kubernetes client workspace and cluster-access contract |
+| `k8s-dev/image/Containerfile`                       | Kubernetes runtime, clients, sources, and checksums     |
+| `k8s-dev/extensions/k8s-extensions.Containerfile`   | Approved Kubernetes VSIX payload                        |
+| `k8s-dev/extensions/k8s-extensions.lock`            | Kubernetes VSIX sources, versions, and checksums        |
 
-The workspace form starts with one searchable, immutable **Project** selector.
-`sandbox` uses the shared Python runtime; `deja-doc` and `dupe-trooper` select
-their locked environments when those images are available. Managed project
-profiles bind their repository, source revision, digest-pinned image, and
-recommended size so developers cannot create mismatched combinations.
-Selecting `sandbox` reveals inputs for any repository already in the internal
-mirror, its source revision, and any approved workspace image; the packaged
-starter and plain Python runtime remain the defaults. The form also offers
-Small, Standard, and Large size profiles. A `Customize specifications` switch
-reveals individual CPU and memory sliders directly below the size selector.
-The resulting CPU and memory values are both requested and limited for
-predictable scheduling. `/tmp` is limited to 4 GiB and the container requests
-2 GiB with a 10 GiB ephemeral-storage limit.
+## Runtime behavior
 
-The packaged starter repository is cloned from Zarf's internal Git mirror with
-its pull-only credential. Its `origin` is intentionally read-only; configure a
-separate internal development remote before pushing changes.
-The production publisher instead supplies the Forgejo HTTPS origin and the
-`forgejo` Coder external-auth provider. Production defaults to an empty
-repository and dotfiles selection; choosing a repository requires each user to
-authorize their own Forgejo account, and no shared Git credential is placed in
-the Flux source.
-The workspace form enables the centrally packaged dotfiles by default and lets
-developers disable them with the `Configure dotfiles` switch. The repository
-and branch are administrator-controlled, immutable template inputs rather than
-editable workspace parameters. The workspace page provides a `Refresh
-Dotfiles` action to apply them on demand. The configuration configures zsh
-without contacting GitHub during workspace startup.
-Its source is
-[`fabian1heinrich/coder-dotfiles`](https://github.com/fabian1heinrich/coder-dotfiles)
-at commit `4d8bd9bf877c32e257f671ab30c86e898261891e`. To upgrade it, update that
-commit in the Zarf package definition and the matching `zarf-ref-<commit>`
-defaults in the workspace and publisher variables.
+Both templates persist `/home/coder`, request and limit CPU and memory, limit
+ephemeral storage, and run as UID/GID 1000 with the restricted pod defaults.
+code-server is mounted read-only at `/opt/vscode-server`. Each template mounts
+its independently versioned approved VSIX set at `/opt/vsix` and installs it
+into persistent `/home/coder`; the Kubernetes template gets checksum-locked
+`kubectl` and Helm clients from its dedicated workspace image. Startup never
+contacts package managers, extension marketplaces, or public artifact
+registries.
 
-Each workspace uses a replaceable Deployment and a `ReadWriteOnce` PVC. The pod
-runs as UID/GID 1000, does not mount a service-account token, uses the runtime
-default seccomp profile, disallows privilege escalation, and drops all
-capabilities. code-server is the supported browser IDE; Coder's desktop
-launchers are hidden.
+The Python template's project profiles and image choices are documented in
+[`python/README.md`](python/README.md). The Kubernetes template exposes no
+Python or project-image choices. It uses a Trixie devcontainer runtime, an
+optional mirrored Git repository, and an in-cluster kubeconfig backed by the
+Pod's rotating ServiceAccount token; see [`k8s-dev/README.md`](k8s-dev/README.md).
+
+The environment that publishes `k8s-dev` selects the existing ServiceAccount
+and default target namespace. RBAC remains environment-owned so the template
+cannot silently grant cluster-wide access. Bind only the namespaces and verbs
+that workspace users require. The local default ServiceAccount normally has no
+API permissions.
 
 ## Cluster requirements
 
 - amd64 nodes and Coder Community 2.36.0 with the provider versions pinned in
-  the root control-plane Containerfiles.
+  the control-plane Containerfiles.
 - Kubernetes and a compatible CRI supporting `spec.volumes[].image`. Image
   volumes are [stable and enabled by default in Kubernetes
   1.36](https://kubernetes.io/docs/tasks/configure-pod-container/image-volumes/).
   Earlier releases that expose the feature may require the `ImageVolume` gate.
-- Image-volume mounts must permit execution of
-  `/opt/vscode-server/bin/code-server`; some runtimes mount them `noexec`.
+- The code-server image-volume mount must permit execution; some runtimes mount
+  image volumes `noexec`.
 - A default StorageClass or an explicit `home_storage_class`, plus a CNI that
   enforces the platform egress policy. The StorageClass must support volume
-  expansion for developers to increase an existing home disk.
+  expansion to grow an existing home disk.
 
-## Build and verification
+## Release and verification
 
-Run `just build-template-artifacts` to build the workspace images and publisher
-runner. For deployment, use the root
+`just build-template-artifacts` builds the repository-owned workspace images
+and publisher runner for the local package. For deployment, use the root
 [local workflow](../README.md#local-deployment).
 
-After publication, create a workspace and verify Python, code-server, and the
-approved extensions without public egress. Recreate the workspace pod and
-confirm that a marker under `/home/coder` survives.
+After publication, verify each template without public egress. For `k8s-dev`,
+confirm `kubectl version --client`, `helm version`, the expected result from
+`kubectl auth can-i --list`, and persistence of a marker under `/home/coder`
+after Pod replacement. For `python-workspace`, verify Python, code-server, and
+the approved extensions.
 
-Image sources and build logic live in the owning Containerfile; deployed outputs
-are pinned by digest in Zarf. Extension versions, target platforms, source URLs,
-and VSIX checksums are maintained in
-`python/extensions/python-extensions.lock`. When upgrading an image, update
-every consuming Zarf definition together.
+Containerfile-based image sources live in their owning Containerfiles. The
+Kubernetes workspace source and tool provenance live in `k8s-dev/image/`.
+Extension provenance remains in the owning Python and Kubernetes extension
+locks.
+
+Published workspace images have independent SemVer tags and `sha-<commit>`
+traceability tags. Consumers retain the readable version in a
+`:<version>@sha256:<digest>` reference; update every consumer whenever a
+published image digest changes. The first `0.1.0` publication may replace a
+pre-policy tag that lacks `io.coder.semver-policy=immutable-v1`; the old digest
+remains reachable by its commit tag. Once marked, CI refuses to move that
+SemVer tag.

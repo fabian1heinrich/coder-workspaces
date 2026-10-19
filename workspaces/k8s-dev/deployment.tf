@@ -1,6 +1,6 @@
 # kubernetes_deployment_v1 does not expose the ImageVolumeSource schema in the
-# pinned provider. kubernetes_manifest uses the target cluster's OpenAPI schema,
-# allowing the two read-only OCI image volumes without init-container copies.
+# pinned provider. kubernetes_manifest uses the target cluster's OpenAPI schema
+# for the read-only code-server and VSIX OCI image volumes.
 resource "kubernetes_manifest" "workspace" {
   count = data.coder_workspace.me.start_count
 
@@ -14,7 +14,9 @@ resource "kubernetes_manifest" "workspace" {
       annotations = { "com.coder.user.email" = data.coder_workspace_owner.me.email }
     }
     spec = {
-      replicas = 1
+      replicas                = 1
+      revisionHistoryLimit    = 1
+      progressDeadlineSeconds = 300
       selector = {
         matchLabels = local.labels
       }
@@ -26,7 +28,8 @@ resource "kubernetes_manifest" "workspace" {
           labels = local.labels
         }
         spec = {
-          automountServiceAccountToken = false
+          automountServiceAccountToken = true
+          serviceAccountName           = var.kubernetes_service_account_name
           enableServiceLinks           = false
           imagePullSecrets             = var.image_pull_secret_name == "" ? [] : [{ name = var.image_pull_secret_name }]
           securityContext = {
@@ -40,7 +43,7 @@ resource "kubernetes_manifest" "workspace" {
           containers = [
             {
               name            = "dev"
-              image           = local.workspace_image
+              image           = var.workspace_image
               imagePullPolicy = "IfNotPresent"
               command = ["sh", "-c", <<-EOT
                 set -eu
@@ -64,14 +67,40 @@ resource "kubernetes_manifest" "workspace" {
                   fi
                 fi
 
-                extensions_dir=/home/coder/.local/share/code-server/extensions
-                mkdir -p "$extensions_dir"
+                kubeconfig="$${HOME}/.kube/coder-in-cluster"
+                umask 077
+                mkdir -p "$${HOME}/.kube"
+                chmod 0700 "$${HOME}/.kube"
+                cat > "$${kubeconfig}.tmp" <<'KUBECONFIG'
+                apiVersion: v1
+                kind: Config
+                clusters:
+                  - name: in-cluster
+                    cluster:
+                      certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                      server: https://kubernetes.default.svc
+                contexts:
+                  - name: in-cluster
+                    context:
+                      cluster: in-cluster
+                      namespace: ${var.kubernetes_target_namespace}
+                      user: workspace
+                current-context: in-cluster
+                users:
+                  - name: workspace
+                    user:
+                      tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+                KUBECONFIG
+                mv "$${kubeconfig}.tmp" "$${kubeconfig}"
+
+                extensions_dir="$${HOME}/.local/share/code-server/extensions"
+                mkdir -p "$${extensions_dir}"
                 for extension in /opt/vsix/*.vsix; do
-                  [ -e "$extension" ] || continue
+                  [ -e "$${extension}" ] || continue
                   /opt/vscode-server/bin/code-server \
-                    --extensions-dir="$extensions_dir" \
+                    --extensions-dir="$${extensions_dir}" \
                     --force \
-                    --install-extension "$extension"
+                    --install-extension "$${extension}"
                 done
 
                 ${coder_agent.main.init_script}
@@ -94,6 +123,10 @@ resource "kubernetes_manifest" "workspace" {
                   {
                     name  = "SHELL"
                     value = "/usr/bin/zsh"
+                  },
+                  {
+                    name  = "KUBECONFIG"
+                    value = "/home/coder/.kube/coder-in-cluster"
                   },
                   {
                     name = "EXTENSIONS_GALLERY"
@@ -131,6 +164,7 @@ resource "kubernetes_manifest" "workspace" {
               securityContext = {
                 allowPrivilegeEscalation = false
                 capabilities             = { drop = ["ALL"] }
+                readOnlyRootFilesystem   = true
                 runAsNonRoot             = true
                 runAsUser                = 1000
                 runAsGroup               = 1000

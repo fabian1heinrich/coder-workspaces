@@ -7,7 +7,7 @@ variable "namespace" {
 variable "workspace_image" {
   type        = string
   description = "GHCR Python workspace runtime, pinned by sha256 digest."
-  default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-workspace@sha256:a350b387c888de9f18a6cb4fcb0c8372bb0496a0d8abd2e57cd8de968b29ef74"
+  default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:0.1.0@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266"
 
   validation {
     condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.workspace_image))
@@ -40,7 +40,7 @@ variable "deja_doc_image" {
 variable "vsix_image" {
   type        = string
   description = "GHCR Python VSIX image-volume payload, pinned by sha256 digest."
-  default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-vsix@sha256:b97eae31de6a9d6b33aed45db57870680dbdf827d92647b8880aa66d6db8a47d"
+  default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-vsix:0.1.0@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b"
 
   validation {
     condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.vsix_image))
@@ -51,7 +51,7 @@ variable "vsix_image" {
 variable "code_server_image" {
   type        = string
   description = "GHCR code-server image-volume payload, pinned by sha256 digest."
-  default     = "ghcr.io/fabian1heinrich/coder-workspaces/code-server@sha256:a92b84f1440bb110f807f28891e678ad326022a2f39545a9534e62308f9625d4"
+  default     = "ghcr.io/fabian1heinrich/coder-workspaces/code-server:0.1.0@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8"
 
   validation {
     condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.code_server_image))

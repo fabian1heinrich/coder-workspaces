@@ -22,8 +22,11 @@ repository, source revision, and approved workspace image controls.
 - Choose `sandbox`, `deja-doc`, or `dupe-trooper` as the project. `sandbox`
   allows any repository already available from the internal mirror and any
   approved image. The managed projects use their locked dependency image.
+- The helper text below the **Project** selector lists each available project
+  with its description.
 - Choose a Small, Standard, or Large workspace size. Enable **Customize
-  specifications** to set CPU and memory independently.
+  specifications** to set CPU, memory, persistent home storage, and dotfiles
+  independently.
 - The web terminal and SSH start in the selected repository. When no repository
   is selected, they start in `/home/coder`.
 - Use Coder's port-forwarding support for project services listening on
@@ -43,8 +46,8 @@ Everything under `/home/coder` persists across workspace stops and pod
 replacement, including repositories, virtual environments, caches, settings,
 and extensions. `/tmp` is ephemeral and is cleared when the pod is replaced.
 
-The home disk can be increased from the workspace parameters when the cluster
-StorageClass supports volume expansion. It cannot be reduced.
+The home disk can be increased under **Customize specifications** when the
+cluster StorageClass supports volume expansion. It cannot be reduced.
 
 ## Offline behavior
 

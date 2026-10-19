@@ -33,7 +33,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: publish
-          image: "${CODER_WORKSPACES_REGISTRY}/fabian1heinrich/coder-workspaces/coderd-provider@sha256:b2bd2ce5aaece5c30d17cace8a27b488c3843deb1293a767c43738a2734a1996"
+          image: "${CODER_WORKSPACES_REGISTRY}/fabian1heinrich/coder-workspaces/coderd-provider@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916"
           imagePullPolicy: IfNotPresent
           command:
             - /bin/sh
@@ -78,15 +78,23 @@ spec:
             - name: TF_VAR_coder_namespace
               value: "${CODER_WORKSPACES_NAMESPACE}"
             - name: TF_VAR_workspace_image
-              value: "${CODER_WORKSPACES_REGISTRY}/fabian1heinrich/coder-workspaces/python-workspace@sha256:a350b387c888de9f18a6cb4fcb0c8372bb0496a0d8abd2e57cd8de968b29ef74"
+              value: "${CODER_WORKSPACES_REGISTRY}/fabian1heinrich/coder-workspaces/python-workspace:0.1.0@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266"
+            - name: TF_VAR_k8s_workspace_image
+              value: "${CODER_WORKSPACES_REGISTRY}/fabian1heinrich/coder-workspaces/k8s-workspace:0.1.0@sha256:${CODER_WORKSPACES_K8S_WORKSPACE_DIGEST}"
+            - name: TF_VAR_k8s_vsix_image
+              value: "${CODER_WORKSPACES_REGISTRY}/fabian1heinrich/coder-workspaces/k8s-vsix:0.1.0@sha256:${CODER_WORKSPACES_K8S_VSIX_DIGEST}"
+            - name: TF_VAR_kubernetes_service_account_name
+              value: "${CODER_WORKSPACES_KUBERNETES_SERVICE_ACCOUNT}"
+            - name: TF_VAR_kubernetes_target_namespace
+              value: "${CODER_WORKSPACES_KUBERNETES_TARGET_NAMESPACE}"
             - name: TF_VAR_dupe_trooper_image
               value: ""
             - name: TF_VAR_deja_doc_image
               value: ""
             - name: TF_VAR_vsix_image
-              value: "${CODER_WORKSPACES_REGISTRY}/fabian1heinrich/coder-workspaces/python-vsix@sha256:b97eae31de6a9d6b33aed45db57870680dbdf827d92647b8880aa66d6db8a47d"
+              value: "${CODER_WORKSPACES_REGISTRY}/fabian1heinrich/coder-workspaces/python-vsix:0.1.0@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b"
             - name: TF_VAR_code_server_image
-              value: "${CODER_WORKSPACES_REGISTRY}/fabian1heinrich/coder-workspaces/code-server@sha256:a92b84f1440bb110f807f28891e678ad326022a2f39545a9534e62308f9625d4"
+              value: "${CODER_WORKSPACES_REGISTRY}/fabian1heinrich/coder-workspaces/code-server:0.1.0@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8"
             - name: TF_VAR_home_storage_class
               value: "${CODER_WORKSPACES_HOME_STORAGE_CLASS}"
             - name: TF_VAR_image_pull_secret_name
@@ -105,6 +113,10 @@ spec:
               value: "${CODER_WORKSPACES_DEFAULT_REPOSITORY}"
             - name: TF_VAR_default_git_branch
               value: "${CODER_WORKSPACES_DEFAULT_GIT_BRANCH}"
+            - name: TF_VAR_k8s_default_repository
+              value: "${CODER_WORKSPACES_K8S_DEFAULT_REPOSITORY}"
+            - name: TF_VAR_k8s_default_git_branch
+              value: "${CODER_WORKSPACES_K8S_DEFAULT_GIT_BRANCH}"
             - name: TF_VAR_default_dotfiles_repository
               value: "${CODER_WORKSPACES_DEFAULT_DOTFILES_REPOSITORY}"
             - name: TF_VAR_default_dotfiles_branch

@@ -45,11 +45,53 @@ variable "publish_id" {
 variable "workspace_image" {
   type        = string
   description = "GHCR Python workspace runtime, pinned by sha256 digest."
-  default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-workspace@sha256:a350b387c888de9f18a6cb4fcb0c8372bb0496a0d8abd2e57cd8de968b29ef74"
+  default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:0.1.0@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266"
 
   validation {
     condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.workspace_image))
     error_message = "workspace_image must be pinned with @sha256:<64 lowercase hex characters>."
+  }
+}
+
+variable "k8s_workspace_image" {
+  type        = string
+  description = "Repository-owned Kubernetes operations workspace image, pinned by sha256 digest."
+
+  validation {
+    condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.k8s_workspace_image))
+    error_message = "k8s_workspace_image must be pinned with @sha256:<64 lowercase hex characters>."
+  }
+}
+
+variable "k8s_vsix_image" {
+  type        = string
+  description = "Repository-owned Kubernetes VSIX image-volume payload, pinned by sha256 digest."
+
+  validation {
+    condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.k8s_vsix_image))
+    error_message = "k8s_vsix_image must be pinned with @sha256:<64 lowercase hex characters>."
+  }
+}
+
+variable "kubernetes_service_account_name" {
+  type        = string
+  description = "Existing ServiceAccount used by Kubernetes operations workspaces."
+  default     = "default"
+
+  validation {
+    condition     = can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", var.kubernetes_service_account_name))
+    error_message = "kubernetes_service_account_name must be a DNS label."
+  }
+}
+
+variable "kubernetes_target_namespace" {
+  type        = string
+  description = "Default namespace in the Kubernetes operations workspace kubeconfig."
+  default     = "default"
+
+  validation {
+    condition     = can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", var.kubernetes_target_namespace))
+    error_message = "kubernetes_target_namespace must be a DNS label."
   }
 }
 
@@ -78,7 +120,7 @@ variable "deja_doc_image" {
 variable "vsix_image" {
   type        = string
   description = "GHCR Python VSIX image-volume payload, pinned by sha256 digest."
-  default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-vsix@sha256:b97eae31de6a9d6b33aed45db57870680dbdf827d92647b8880aa66d6db8a47d"
+  default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-vsix:0.1.0@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b"
 
   validation {
     condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.vsix_image))
@@ -89,7 +131,7 @@ variable "vsix_image" {
 variable "code_server_image" {
   type        = string
   description = "GHCR code-server image-volume payload, pinned by sha256 digest."
-  default     = "ghcr.io/fabian1heinrich/coder-workspaces/code-server@sha256:a92b84f1440bb110f807f28891e678ad326022a2f39545a9534e62308f9625d4"
+  default     = "ghcr.io/fabian1heinrich/coder-workspaces/code-server:0.1.0@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8"
 
   validation {
     condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.code_server_image))
@@ -188,6 +230,28 @@ variable "default_git_branch" {
   validation {
     condition     = can(regex("^[A-Za-z0-9._/-]+$", var.default_git_branch))
     error_message = "default_git_branch contains unsupported characters."
+  }
+}
+
+variable "k8s_default_repository" {
+  type        = string
+  description = "Default owner/repository path for Kubernetes operations workspaces."
+  default     = ""
+
+  validation {
+    condition     = can(regex("^$|^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$", var.k8s_default_repository))
+    error_message = "k8s_default_repository must be empty or an owner/repository path."
+  }
+}
+
+variable "k8s_default_git_branch" {
+  type        = string
+  description = "Default branch or immutable revision for the Kubernetes operations repository."
+  default     = "main"
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9._/-]+$", var.k8s_default_git_branch))
+    error_message = "k8s_default_git_branch contains unsupported characters."
   }
 }
 

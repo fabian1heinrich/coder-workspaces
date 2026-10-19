@@ -1,7 +1,10 @@
 data "coder_parameter" "project" {
   name         = "project"
   display_name = "Project"
-  description  = "Choose a managed project profile or sandbox for custom repository and workspace image selections."
+  description = join("\n", concat(
+    ["Choose a project:"],
+    [for project_name in local.project_order : "- **${project_name}** — ${local.projects[project_name].description}"],
+  ))
   type         = "string"
   form_type    = "dropdown"
   default      = "sandbox"
@@ -121,12 +124,14 @@ data "coder_parameter" "memory" {
 }
 
 data "coder_parameter" "home_disk_size" {
+  count = data.coder_parameter.customize_specs.value ? 1 : 0
+
   name         = "home_disk_size"
   display_name = "Persistent home disk (GiB)"
-  description  = "Size of the persistent volume mounted at /home/coder. It can be increased later when the StorageClass supports expansion."
+  description  = "Size of the persistent /home/coder directory."
   type         = "number"
   form_type    = "slider"
-  default      = 20
+  default      = local.default_home_disk_size
   order        = 9
   mutable      = true
   icon         = "/emojis/1f4be.png"
@@ -139,12 +144,14 @@ data "coder_parameter" "home_disk_size" {
 }
 
 data "coder_parameter" "enable_dotfiles" {
+  count = data.coder_parameter.customize_specs.value ? 1 : 0
+
   name         = "enable_dotfiles"
   display_name = "Configure dotfiles"
   description  = "Apply the centrally packaged dotfiles when the workspace starts."
   type         = "bool"
   form_type    = "switch"
-  default      = true
+  default      = local.default_enable_dotfiles
   order        = 10
   mutable      = true
   icon         = "/icon/dotfiles.svg"
@@ -176,7 +183,7 @@ data "coder_parameter" "workspace_size" {
 data "coder_parameter" "customize_specs" {
   name         = "customize_specs"
   display_name = "Customize specifications"
-  description  = "Override the selected workspace size with custom CPU and memory values."
+  description  = "Override the selected workspace size and defaults for CPU, memory, persistent home storage, and dotfiles."
   type         = "bool"
   form_type    = "switch"
   default      = false

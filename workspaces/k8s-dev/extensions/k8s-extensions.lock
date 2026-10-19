@@ -1,0 +1,3 @@
+# extension-id|version|platform|sha256|download-url
+redhat.vscode-yaml|2.0.0|universal|4bba62ccda962b720dcb0829e85cf4109c94e86653dcd39fd7500c3687ad8c60|https://open-vsx.org/api/redhat/vscode-yaml/2.0.0/file/redhat.vscode-yaml-2.0.0.vsix
+ms-kubernetes-tools.vscode-kubernetes-tools|1.4.1|universal|39b6f391ba6953de1f9af8bfec94bf008ec8fb0b1b0bfdc2fdcf0046abfd9ce6|https://open-vsx.org/api/ms-kubernetes-tools/vscode-kubernetes-tools/1.4.1/file/ms-kubernetes-tools.vscode-kubernetes-tools-1.4.1.vsix

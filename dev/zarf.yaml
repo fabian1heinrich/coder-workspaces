@@ -1,9 +1,9 @@
 kind: ZarfPackageConfig
 
 metadata:
-  name: coder-local-dev
+  name: coder-registry
   version: 0.1.0
-  description: Locally built Coder platform and optional workspace-template release
+  description: Registry-backed Coder platform and optional workspace-template release
   architecture: amd64
 
 variables:
@@ -31,51 +31,50 @@ variables:
     prompt: false
     sensitive: true
 
-# The local build recipes resolve these inputs from their OCI archives.
 constants:
   - name: PUBLISH_TEMPLATE
-    value: "###ZARF_PKG_TMPL_PUBLISH_TEMPLATE###"
+    value: all
   - name: UPDATE_WORKSPACE
-    description: Existing owner/workspace or all outdated workspaces to update after publication.
-    value: "###ZARF_PKG_TMPL_UPDATE_WORKSPACE###"
-    pattern: "^$|^all$|^[A-Za-z0-9-]+/[A-Za-z0-9-]+$"
+    value: all
   - name: CODER_IMAGE_DIGEST
-    value: "###ZARF_PKG_TMPL_CODER_IMAGE_DIGEST###"
+    value: "4a42711469c853fc68b2d82178d4132e87f438ea0af930ae7d5f0ed2445b557d"
+  - name: CODER_IMAGE_REPOSITORY
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/coder@sha256"
   - name: CODER_MODULES_IMAGE
-    value: "###ZARF_PKG_TMPL_CODER_MODULES_IMAGE###"
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/coder-modules@sha256:9d5660abd1eeeb1420713cd258ee4825638d16559e7a4f56a50ae4af35508562"
   - name: PUBLISHER_IMAGE
-    value: "###ZARF_PKG_TMPL_PUBLISHER_IMAGE###"
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/coderd-provider@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916"
   - name: CODE_SERVER_IMAGE
-    value: "###ZARF_PKG_TMPL_CODE_SERVER_IMAGE###"
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/code-server:0.1.0@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8"
   - name: WORKSPACE_IMAGE
-    value: "###ZARF_PKG_TMPL_WORKSPACE_IMAGE###"
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:0.1.0@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266"
+  - name: K8S_WORKSPACE_IMAGE
+    value: "###ZARF_PKG_TMPL_K8S_WORKSPACE_IMAGE###"
+  - name: K8S_VSIX_IMAGE
+    value: "###ZARF_PKG_TMPL_K8S_VSIX_IMAGE###"
   - name: DUPE_TROOPER_IMAGE
-    value: "###ZARF_PKG_TMPL_DUPE_TROOPER_IMAGE###"
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/dupe-trooper:0.1.0@sha256:301aa80382431ca6f6361e36c0c1220185af58971441267b1ae129cfffcd2935"
   - name: DEJA_DOC_IMAGE
-    value: "###ZARF_PKG_TMPL_DEJA_DOC_IMAGE###"
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/deja-doc:0.1.0@sha256:fd540c6082c9a97a3a5741a9f357de86c500131ea98e19e4c72ccb594447d3fc"
   - name: VSIX_IMAGE
-    value: "###ZARF_PKG_TMPL_VSIX_IMAGE###"
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/python-vsix:0.1.0@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b"
 
 components:
   - name: coder-images
-    description: Locally built Coder Community control-plane image
+    description: Coder Community control-plane image
     required: true
     only:
       flavor: full
-    imageArchives:
-      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/coder-opentofu.oci.tar"
-        images:
-          - zarf.internal/coder-workspaces-coder:opentofu
+    images:
+      - ghcr.io/fabian1heinrich/coder-workspaces/coder@sha256:4a42711469c853fc68b2d82178d4132e87f438ea0af930ae7d5f0ed2445b557d
 
   - name: opentofu-coder-modules
-    description: Locally built read-only OpenTofu module payload
+    description: Read-only OpenTofu module payload
     required: true
     only:
       flavor: full
-    imageArchives:
-      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/coder-modules.oci.tar"
-        images:
-          - zarf.internal/coder-modules:0.1.0
+    images:
+      - ghcr.io/fabian1heinrich/coder-workspaces/coder-modules@sha256:9d5660abd1eeeb1420713cd258ee4825638d16559e7a4f56a50ae4af35508562
 
   - name: cnpg
     description: Deploy CloudNativePG and the Coder PostgreSQL database
@@ -188,31 +187,21 @@ components:
             description: Bootstrap the Coder administrator and template publisher credential
             mute: true
 
-  # Keep local template transport here so this definition is the only local
-  # package entry point.
+  # Keep template transport here so this definition is the only local package
+  # entry point.
   - name: template-artifacts
-    description: Transport the local template runner, workspace images, and Git repositories
+    description: Transport the 0.1.0 workspace images, template runner, and Git repositories
     required: false
     default: true
-    imageArchives:
-      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/coderd-provider-opentofu.oci.tar"
-        images:
-          - zarf.internal/coder-workspaces-coderd-provider:opentofu
-      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/code-server.oci.tar"
-        images:
-          - zarf.internal/coder-workspaces-code-server:local
-      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/python-workspace.oci.tar"
-        images:
-          - zarf.internal/coder-workspaces-python-workspace:local
-      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/dupe-trooper.oci.tar"
-        images:
-          - zarf.internal/coder-workspaces-dupe-trooper:local
-      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/deja-doc.oci.tar"
-        images:
-          - zarf.internal/coder-workspaces-deja-doc:local
-      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/python-vsix.oci.tar"
-        images:
-          - zarf.internal/coder-workspaces-python-vsix:local
+    images:
+      - ghcr.io/fabian1heinrich/coder-workspaces/coderd-provider@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916
+      - ghcr.io/fabian1heinrich/coder-workspaces/code-server@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8
+      - ghcr.io/fabian1heinrich/coder-workspaces/python-workspace@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266
+      - "###ZARF_PKG_TMPL_K8S_WORKSPACE_DIGEST_REF###"
+      - "###ZARF_PKG_TMPL_K8S_VSIX_DIGEST_REF###"
+      - ghcr.io/fabian1heinrich/coder-workspaces/dupe-trooper@sha256:301aa80382431ca6f6361e36c0c1220185af58971441267b1ae129cfffcd2935
+      - ghcr.io/fabian1heinrich/coder-workspaces/deja-doc@sha256:fd540c6082c9a97a3a5741a9f357de86c500131ea98e19e4c72ccb594447d3fc
+      - ghcr.io/fabian1heinrich/coder-workspaces/python-vsix@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b
     repos:
       - https://github.com/fabian1heinrich/uv-devcontainer.git@e637e71ed9bfcd2a2181c0b0c8d3050f1beb8483
       - https://github.com/fabian1heinrich/coder-dotfiles.git@4d8bd9bf877c32e257f671ab30c86e898261891e

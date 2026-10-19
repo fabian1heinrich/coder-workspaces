@@ -38,8 +38,9 @@ Keep these layers separate and independently versioned:
 - Publishing: `template-publisher/` owns the publisher code, shared Job, and
   namespace-scoped Kubernetes state-backend RBAC. Credentials remain
   environment-owned.
-- Distribution: self-contained `dev/zarf.yaml` deploys all or only template
-  components from locally built archives.
+- Distribution: self-contained packages under `dev/` deploy all or only
+  template components from either published, digest-pinned OCI images or local
+  OCI archives.
 - Production: the Flux source carries the generic publisher runtime, state
   backend RBAC, and template payload; `release/` owns the mirror-only workspace
   image and Flux source packages. The consuming platform owns the dedicated

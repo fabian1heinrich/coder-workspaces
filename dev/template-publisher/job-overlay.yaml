@@ -36,6 +36,14 @@ spec:
               value: coder
             - name: TF_VAR_workspace_image
               value: "###ZARF_CONST_WORKSPACE_IMAGE###"
+            - name: TF_VAR_k8s_workspace_image
+              value: "###ZARF_CONST_K8S_WORKSPACE_IMAGE###"
+            - name: TF_VAR_k8s_vsix_image
+              value: "###ZARF_CONST_K8S_VSIX_IMAGE###"
+            - name: TF_VAR_kubernetes_service_account_name
+              value: default
+            - name: TF_VAR_kubernetes_target_namespace
+              value: default
             - name: TF_VAR_dupe_trooper_image
               value: "###ZARF_CONST_DUPE_TROOPER_IMAGE###"
             - name: TF_VAR_deja_doc_image
@@ -62,6 +70,10 @@ spec:
               value: zarf-git-user/uv-devcontainer-322178071
             - name: TF_VAR_default_git_branch
               value: zarf-ref-e637e71ed9bfcd2a2181c0b0c8d3050f1beb8483
+            - name: TF_VAR_k8s_default_repository
+              value: ""
+            - name: TF_VAR_k8s_default_git_branch
+              value: main
             - name: TF_VAR_default_dotfiles_repository
               value: zarf-git-user/coder-dotfiles-3319437223
             - name: TF_VAR_default_dotfiles_branch

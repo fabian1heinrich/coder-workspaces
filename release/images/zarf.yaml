@@ -8,20 +8,22 @@ metadata:
 
 components:
   - name: workspace-runtime
-    description: Python workspace runtime
+    description: Python and Kubernetes operations workspace runtimes 0.1.0
     required: true
     images:
-      - registry.invalid/fabian1heinrich/coder-workspaces/python-workspace@sha256:a350b387c888de9f18a6cb4fcb0c8372bb0496a0d8abd2e57cd8de968b29ef74
+      - registry.invalid/fabian1heinrich/coder-workspaces/python-workspace@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266
+      - "###ZARF_PKG_TMPL_K8S_WORKSPACE_DIGEST_REF###"
 
   - name: workspace-tooling
-    description: Read-only code-server and VSIX payloads
+    description: Read-only code-server and VSIX payloads 0.1.0
     required: true
     images:
-      - registry.invalid/fabian1heinrich/coder-workspaces/code-server@sha256:a92b84f1440bb110f807f28891e678ad326022a2f39545a9534e62308f9625d4
-      - registry.invalid/fabian1heinrich/coder-workspaces/python-vsix@sha256:b97eae31de6a9d6b33aed45db57870680dbdf827d92647b8880aa66d6db8a47d
+      - registry.invalid/fabian1heinrich/coder-workspaces/code-server@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8
+      - registry.invalid/fabian1heinrich/coder-workspaces/python-vsix@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b
+      - "###ZARF_PKG_TMPL_K8S_VSIX_DIGEST_REF###"
 
   - name: publisher-runtime
     description: Offline OpenTofu and Coder provider runner
     required: true
     images:
-      - registry.invalid/fabian1heinrich/coder-workspaces/coderd-provider@sha256:b2bd2ce5aaece5c30d17cace8a27b488c3843deb1293a767c43738a2734a1996
+      - registry.invalid/fabian1heinrich/coder-workspaces/coderd-provider@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916

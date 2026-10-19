@@ -4,8 +4,18 @@ version = "0.0.0"
 description = "Managed offline development environment for Dupe Trooper"
 requires-python = ">=3.13,<3.14"
 dependencies = [
+  "blake3==1.0.11",
   "httpx==0.28.1",
+  "imagehash==4.3.2",
+  "openpyxl==3.1.5",
+  "pandas==3.0.6",
+  "platformdirs==4.13.5",
+  "rapidfuzz==3.14.6",
   "rich==14.1.0",
+  "scikit-learn==1.9.1",
+  "send2trash==2.1.0",
+  "streamlit==1.66.0",
+  "watchdog==6.0.0",
 ]
 
 [build-system]
@@ -18,7 +28,10 @@ build = [
   "wheel==0.45.1",
 ]
 dev = [
+  "hypothesis==6.170.2",
+  "pyfakefs==6.2.0",
   "pytest==8.4.1",
+  "pytest-cov==7.1.0",
   "ruff==0.12.1",
 ]
 

@@ -2,28 +2,49 @@
 # image is only a pinned binary source for project builds.
 FROM ghcr.io/astral-sh/uv@sha256:a5727064a0de127bdb7c9d3c1383f3a9ac307d9f2d8a391edc7896c54289ced0 AS uv
 
-# VS Code Python devcontainer 1-3.13-bookworm, pinned to its
+# VS Code Python devcontainer 3.2.6-3.13-trixie, pinned to its
 # multi-architecture manifest. The runtime target contains no project
 # dependencies, source, virtual environments, VS Code Web, or extensions.
-FROM mcr.microsoft.com/devcontainers/python@sha256:0aa711e570b306c02946cdda67587ce8c65978dbb65691341cbcfd4854dfcfff AS runtime
+FROM mcr.microsoft.com/devcontainers/python:3.2.6-3.13-trixie@sha256:5ea7e72d3c1beb6aefdfea8001483345c39af4898e22f2c543deb6a00802ede4 AS runtime
 
-# The upstream devcontainer account is named vscode. Keep its UID/GID so the
-# restricted pod security context remains valid, but expose the workspace user
-# and login shell expected by the template.
-RUN groupmod --new-name coder vscode \
+ARG IMAGE_VERSION=0.1.0
+
+# The upstream devcontainer account is named vscode. Rename it in place so all
+# files that already belong to UID/GID 1000 remain accessible, then assert the
+# complete account contract required by the restricted pod security context.
+RUN set -eux; \
+    test "$(id -u vscode)" = "1000"; \
+    test "$(id -g vscode)" = "1000"; \
+    test "$(getent group 1000 | cut -d: -f1)" = "vscode"; \
+    groupmod --new-name coder vscode \
     && usermod --login coder \
       --home /home/coder \
       --move-home \
       --shell /usr/bin/zsh \
       --gid coder \
       vscode \
-    && sed 's/^vscode /coder /' /etc/sudoers.d/vscode > /etc/sudoers.d/coder \
+    && sed 's/vscode/coder/g' /etc/sudoers.d/vscode > /etc/sudoers.d/coder \
     && chmod 0440 /etc/sudoers.d/coder \
     && rm /etc/sudoers.d/vscode \
-    && test "$(getent passwd coder | cut -d: -f6-7)" = "/home/coder:/usr/bin/zsh"
+    && install -d -o coder -g coder -m 0755 \
+      /home/coder \
+      /home/coder/.cache \
+      /home/coder/.config \
+      /home/coder/.local \
+    && chown -R coder:coder /home/coder \
+    && test "$(id -u coder)" = "1000" \
+    && test "$(id -g coder)" = "1000" \
+    && test "$(getent group 1000 | cut -d: -f1)" = "coder" \
+    && test "$(getent passwd coder | cut -d: -f6-7)" = "/home/coder:/usr/bin/zsh" \
+    && test "$(stat -c '%u:%g:%a' /home/coder)" = "1000:1000:755" \
+    && grep -Eq '^coder[[:space:]]+ALL=' /etc/sudoers.d/coder \
+    && ! getent passwd vscode \
+    && ! getent group vscode
 
 ENV HOME=/home/coder \
-    SHELL=/usr/bin/zsh
+    SHELL=/usr/bin/zsh \
+    USER=coder \
+    LOGNAME=coder
 
 USER coder
 WORKDIR /home/coder
@@ -31,16 +52,17 @@ WORKDIR /home/coder
 LABEL org.opencontainers.image.title="Coder Python workspace runtime" \
       org.opencontainers.image.description="VS Code Python devcontainer runtime for an air-gapped Coder workspace" \
       org.opencontainers.image.source="https://github.com/fabian1heinrich/coder-workspaces" \
-      org.opencontainers.image.version="0.1.0" \
+      org.opencontainers.image.version="${IMAGE_VERSION}" \
+      io.coder.semver-policy="immutable-v1" \
       io.coder.workspace.runtime="python" \
-      io.coder.workspace.source-image="mcr.microsoft.com/devcontainers/python@sha256:0aa711e570b306c02946cdda67587ce8c65978dbb65691341cbcfd4854dfcfff"
+      io.coder.workspace.source-image="mcr.microsoft.com/devcontainers/python:3.2.6-3.13-trixie@sha256:5ea7e72d3c1beb6aefdfea8001483345c39af4898e22f2c543deb6a00802ede4"
 
 # Project images share the runtime layers above and add only a selected locked
 # environment. Build the runtime target directly for a plain Python workspace.
 FROM runtime AS project
 
 ARG PROJECT
-ARG SOURCE_REVISION
+ARG IMAGE_VERSION=0.1.0
 
 USER root
 RUN install -d -o 1000 -g 1000 -m 0755 /opt/project-config /opt/uv-cache
@@ -70,7 +92,8 @@ WORKDIR /home/coder
 LABEL org.opencontainers.image.title="${PROJECT} Python environment" \
       org.opencontainers.image.description="Prebuilt offline uv environment for ${PROJECT}" \
       org.opencontainers.image.source="https://github.com/fabian1heinrich/coder-workspaces" \
-      org.opencontainers.image.revision="${SOURCE_REVISION}" \
+      org.opencontainers.image.version="${IMAGE_VERSION}" \
+      io.coder.semver-policy="immutable-v1" \
       io.coder.project.name="${PROJECT}" \
       io.coder.project.environment.python="3.13" \
       io.coder.project.environment.uv="0.8.15"

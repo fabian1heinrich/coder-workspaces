@@ -83,7 +83,7 @@ resource "coder_metadata" "workspace" {
 }
 
 module "dotfiles" {
-  count  = data.coder_parameter.enable_dotfiles.value && var.default_dotfiles_repository != "" ? 1 : 0
+  count  = local.enable_dotfiles && var.default_dotfiles_repository != "" ? 1 : 0
   source = "/opt/coder-modules/dotfiles"
 
   agent_id        = coder_agent.main.id

@@ -39,20 +39,20 @@ resource "coder_agent" "main" {
 resource "coder_metadata" "workspace" {
   count       = data.coder_workspace.me.start_count
   resource_id = coder_agent.main.id
-  icon        = "/icon/python.svg"
+  icon        = "/icon/k8s.svg"
 
   item {
-    key   = "Project"
-    value = data.coder_parameter.project.value
+    key   = "Kubernetes identity"
+    value = "system:serviceaccount:${var.namespace}:${var.kubernetes_service_account_name}"
   }
 
   item {
-    key   = "Workspace image"
-    value = local.workspace_image_name
+    key   = "Default namespace"
+    value = var.kubernetes_target_namespace
   }
 
   item {
-    key   = "Workspace Size"
+    key   = "Workspace size"
     value = data.coder_parameter.customize_specs.value ? "Custom" : local.workspace_size.display_name
   }
 
@@ -80,17 +80,6 @@ resource "coder_metadata" "workspace" {
     key   = "Source revision"
     value = local.git_branch == "" ? "None" : local.git_branch
   }
-}
-
-module "dotfiles" {
-  count  = data.coder_parameter.enable_dotfiles.value && var.default_dotfiles_repository != "" ? 1 : 0
-  source = "/opt/coder-modules/dotfiles"
-
-  agent_id        = coder_agent.main.id
-  dotfiles_uri    = local.dotfiles_url
-  dotfiles_branch = var.default_dotfiles_branch
-  manual_update   = true
-  order           = 100
 }
 
 module "coder_login" {
@@ -128,6 +117,9 @@ module "code_server" {
   install_prefix = "/opt/vscode-server"
   extensions_dir = "/home/coder/.local/share/code-server/extensions"
   settings = {
+    "extensions.autoCheckUpdates"              = false
+    "extensions.autoUpdate"                    = false
+    "telemetry.telemetryLevel"                 = "off"
     "terminal.integrated.defaultProfile.linux" = "zsh"
     "terminal.integrated.cwd"                  = local.workspace_folder
     "terminal.integrated.profiles.linux" = {

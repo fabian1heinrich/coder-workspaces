@@ -6,7 +6,6 @@
 .direnv/
 .cache/
 kubeconfig
-dev/zarf-config.yaml
 
 # Local Terraform/OpenTofu working data and state. Lock files remain tracked.
 **/.terraform/

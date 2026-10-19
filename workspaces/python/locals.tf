@@ -1,4 +1,7 @@
 locals {
+  default_home_disk_size  = 20
+  default_enable_dotfiles = true
+
   workspace_images = merge(
     {
       "python-3.13" = {
@@ -8,13 +11,13 @@ locals {
     },
     var.deja_doc_image == "" ? {} : {
       "deja-doc" = {
-        description = "Python 3.13 with the locked deja-doc development environment."
+        description = "Turns unruly PDFs, DOCX files, and other proprietary formats into RAG- and MCP-ready AI knowledge—because even legacy files deserve a second career."
         reference   = var.deja_doc_image
       }
     },
     var.dupe_trooper_image == "" ? {} : {
       "dupe-trooper" = {
-        description = "Python 3.13 with the locked dupe-trooper development environment."
+        description = "Patrols the file structure for duplicate files and sends the redundant clones packing."
         reference   = var.dupe_trooper_image
       }
     },
@@ -38,7 +41,7 @@ locals {
     },
     var.deja_doc_image == "" ? {} : {
       "deja-doc" = {
-        description      = "Python 3.13 with the locked deja-doc development environment."
+        description      = "Turns unruly PDFs, DOCX files, and other proprietary formats into RAG- and MCP-ready AI knowledge—because even legacy files deserve a second career."
         repository       = var.default_repository
         git_branch       = var.default_git_branch
         workspace_image  = var.deja_doc_image
@@ -47,7 +50,7 @@ locals {
     },
     var.dupe_trooper_image == "" ? {} : {
       "dupe-trooper" = {
-        description      = "Python 3.13 with the locked dupe-trooper development environment."
+        description      = "Patrols the file structure for duplicate files and sends the redundant clones packing."
         repository       = var.default_repository
         git_branch       = var.default_git_branch
         workspace_image  = var.dupe_trooper_image
@@ -57,9 +60,9 @@ locals {
   )
 
   project_order = concat(
-    ["sandbox"],
     var.deja_doc_image == "" ? [] : ["deja-doc"],
     var.dupe_trooper_image == "" ? [] : ["dupe-trooper"],
+    ["sandbox"],
   )
 
   workspace_sizes = {
@@ -96,7 +99,8 @@ locals {
   workspace_size       = local.workspace_sizes[data.coder_parameter.workspace_size.value]
   cpu_limit            = tostring(data.coder_parameter.customize_specs.value ? data.coder_parameter.cpu[0].value : local.workspace_size.cpu)
   memory_limit         = "${data.coder_parameter.customize_specs.value ? data.coder_parameter.memory[0].value : local.workspace_size.memory}Gi"
-  home_storage_size    = "${data.coder_parameter.home_disk_size.value}Gi"
+  home_storage_size    = "${try(data.coder_parameter.home_disk_size[0].value, local.default_home_disk_size)}Gi"
+  enable_dotfiles      = try(data.coder_parameter.enable_dotfiles[0].value, local.default_enable_dotfiles)
 
   # CPU and memory requests intentionally match their limits so a selected
   # workspace size receives the capacity that Kubernetes schedules for it.

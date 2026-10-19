@@ -1,0 +1,86 @@
+# Download the exact Kubernetes clients on the connected build host and verify
+# each artifact before it can enter the runtime image.
+FROM mcr.microsoft.com/devcontainers/base:2.2.3-trixie@sha256:6ee2b4097c75d33e9a94d941577a3286e5d629434fba384688b06daeeaaeac99 AS tools
+
+USER root
+ADD --checksum=sha256:0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b \
+    https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz \
+    /tmp/helm.tar.gz
+ADD --checksum=sha256:33bc88a24c3b09cf55bfd59e6ca977881b61fc3f25ab65bc80c65b430248648e \
+    https://dl.k8s.io/v1.36.5/bin/linux/amd64/kubectl \
+    /tmp/kubectl
+
+RUN set -eux; \
+    install -d -m 0755 /out; \
+    tar -xzf /tmp/helm.tar.gz -C /tmp; \
+    install -m 0555 /tmp/linux-amd64/helm /out/helm; \
+    install -m 0555 /tmp/kubectl /out/kubectl
+
+# VS Code Debian devcontainer 2.2.3-trixie, pinned to its multi-architecture
+# manifest. code-server remains a separate read-only OCI image volume.
+FROM mcr.microsoft.com/devcontainers/base:2.2.3-trixie@sha256:6ee2b4097c75d33e9a94d941577a3286e5d629434fba384688b06daeeaaeac99 AS runtime
+
+ARG IMAGE_VERSION=0.1.0
+
+# Rename the upstream vscode account in place so all files that already belong
+# to UID/GID 1000 remain accessible, then assert the workspace user contract.
+USER root
+RUN set -eux; \
+    test "$(id -u vscode)" = "1000"; \
+    test "$(id -g vscode)" = "1000"; \
+    test "$(getent group 1000 | cut -d: -f1)" = "vscode"; \
+    groupmod --new-name coder vscode \
+    && usermod --login coder \
+    --home /home/coder \
+    --move-home \
+    --shell /usr/bin/zsh \
+    --gid coder \
+    vscode \
+    && sed 's/vscode/coder/g' /etc/sudoers.d/vscode > /etc/sudoers.d/coder \
+    && chmod 0440 /etc/sudoers.d/coder \
+    && rm /etc/sudoers.d/vscode \
+    && install -d -o coder -g coder -m 0755 \
+    /home/coder \
+    /home/coder/.cache \
+    /home/coder/.config \
+    /home/coder/.local \
+    && chown -R coder:coder /home/coder \
+    && test "$(id -u coder)" = "1000" \
+    && test "$(id -g coder)" = "1000" \
+    && test "$(getent group 1000 | cut -d: -f1)" = "coder" \
+    && test "$(getent passwd coder | cut -d: -f6-7)" = "/home/coder:/usr/bin/zsh" \
+    && test "$(stat -c '%u:%g:%a' /home/coder)" = "1000:1000:755" \
+    && grep -Eq '^coder[[:space:]]+ALL=' /etc/sudoers.d/coder \
+    && command -v curl \
+    && command -v git \
+    && command -v jq \
+    && command -v ssh \
+    && command -v zsh \
+    && ! getent passwd vscode \
+    && ! getent group vscode
+
+COPY --from=tools --chown=root:root --chmod=0555 \
+    /out/helm \
+    /out/kubectl \
+    /usr/local/bin/
+
+RUN test -x /usr/local/bin/helm \
+    && test -x /usr/local/bin/kubectl
+
+ENV HOME=/home/coder \
+    SHELL=/usr/bin/zsh \
+    USER=coder \
+    LOGNAME=coder
+
+USER coder
+WORKDIR /home/coder
+
+LABEL org.opencontainers.image.title="Coder Kubernetes workspace runtime" \
+    org.opencontainers.image.description="VS Code Debian devcontainer runtime for an air-gapped Kubernetes operations workspace" \
+    org.opencontainers.image.source="https://github.com/fabian1heinrich/coder-workspaces" \
+    org.opencontainers.image.version="${IMAGE_VERSION}" \
+    io.coder.semver-policy="immutable-v1" \
+    io.coder.workspace.runtime="kubernetes" \
+    io.coder.workspace.source-image="mcr.microsoft.com/devcontainers/base:2.2.3-trixie@sha256:6ee2b4097c75d33e9a94d941577a3286e5d629434fba384688b06daeeaaeac99" \
+    io.coder.workspace.tool.helm="4.3.1" \
+    io.coder.workspace.tool.kubectl="1.36.5"

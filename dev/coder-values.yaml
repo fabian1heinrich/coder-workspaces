@@ -1,9 +1,9 @@
-# Helm values for the local Coder control plane.
+# Helm values for the Coder control plane.
 coder:
   image:
     # The pinned chart concatenates repo and tag. Split @sha256:<digest> at
     # the colon so its rendered image is a valid digest reference.
-    repo: zarf.internal/coder-workspaces-coder@sha256
+    repo: "###ZARF_CONST_CODER_IMAGE_REPOSITORY###"
     tag: "###ZARF_CONST_CODER_IMAGE_DIGEST###"
     pullPolicy: IfNotPresent
     pullSecrets:
