@@ -62,7 +62,7 @@ Keep these layers separate and independently versioned:
   `metadata.version` from any imported component definitions. Derive the
   production source and images package versions and OCI tag from committed
   `HEAD` as `YYYY.MM.DD-g<12-character-sha>`; generate the Flux entry point with
-  the resulting OCI digest. Never overwrite a published immutable tag.
+  the resulting OCI digest. Never overwrite a published production release tag.
 
 ## Working conventions
 
@@ -73,11 +73,12 @@ Keep these layers separate and independently versioned:
   workflow and use the underlying tool directly for infrequent maintenance.
 - Keep the root, `modules/`, `workspaces/`, `template-publisher/`, and `dev/`
   READMEs short; point operations to `Justfile`.
-- Record artifact source, immutable version or commit, and checksum in its owning
+- Record artifact source, exact version or commit, and checksum in its owning
   Containerfile, package definition, or lock file. Put provenance and upgrade
   steps in the owning domain README.
 - Include changed artifacts in Zarf and update every consumer to its digest or checksum. Do not create a separate repository-wide version inventory.
 - Update dependency and source pins when the requested artifact change requires it; third-party chart versions are dependency pins.
+- Do not bump an artifact or package version unless the user explicitly requests or approves the bump. Workspace image SemVer tags are mutable publishing aliases; deployments and packages must remain digest-pinned. Before deleting a superseded digest, confirm that no retained template revision, release metadata, Zarf package, or deployed workspace references it.
 - Do not edit production release identities by hand. Release builds derive
   them from committed `HEAD`; explicit dependency, image, and template version
   changes remain scoped to their owning files.

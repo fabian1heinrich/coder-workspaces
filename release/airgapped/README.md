@@ -1,11 +1,9 @@
 # Air-gapped Coder workspace release
 
 Run from the copied `coder-workspaces` directory. These are mirror archives;
-never deploy them with Zarf. The consuming platform must provide the registry
-writer credential and the runtime contracts configured in its Flux
-substitution values. `WORKLOAD_NAMESPACE` identifies the dedicated
-`coder-template-publisher` runtime namespace; it is distinct from the namespace
-where Coder provisions user workspaces.
+never deploy them. The consuming platform provides registry credentials and
+Flux substitutions. `WORKLOAD_NAMESPACE` is the publisher namespace, not the
+workspace namespace.
 
 Prepare the environment and verify the copied release:
 
@@ -17,23 +15,20 @@ test -f "$KUBECONFIG"
 sha256sum --check SHA256SUMS
 ```
 
-For an ordinary template-only release, mirror the source:
+For a template-only release:
 
 ```sh
 just mirror
 ```
 
-When a publisher, workspace, code-server, or VSIX image changed, mirror the
-images first and the source last:
+When an image changed, mirror images before the source:
 
 ```sh
 just mirror-all
 ```
 
-Mirroring leaves the new source inactive. Confirm that Zot contains the digest
-recorded in this release, then apply its generated release selector. On an
-existing platform, the watched ConfigMap makes the application root update its
-platform-owned `OCIRepository` to that exact digest:
+Mirroring leaves the source inactive. Verify the recorded digest, then apply
+the generated selector:
 
 ```sh
 release_id="$(sed -n 's/^release_id=//p' RELEASE-METADATA)"
@@ -56,10 +51,8 @@ unset DOCKER_CONFIG
 kubectl apply --server-side -f flux-entrypoint.yaml
 ```
 
-On a first installation, activate the consuming application release now; it
-creates the platform-owned `OCIRepository` and child Kustomization with the
-already selected digest. For that first installation and for routine updates,
-finish by waiting for the exact source, child reconciliation, and publisher Job:
+On first installation, activate the consuming application release. Then wait
+for the exact source, child reconciliation, and publisher Job:
 
 ```sh
 kubectl -n flux-system wait ocirepository/coder-workspaces \
@@ -72,7 +65,6 @@ kubectl -n "$WORKLOAD_NAMESPACE" wait "job/$PUBLISHER_JOB_NAME" \
   --for=condition=Complete --timeout=10m
 ```
 
-To roll back, enter an older copied release, mirror its source if it is absent,
-and reapply its digest-pinned `flux-entrypoint.yaml`. Never move or overwrite an
-existing source tag. Desired-state rollback does not reverse publisher state or
-changes already made through the Coder API.
+To roll back, use an older copied release, mirror its source if needed, and
+reapply its `flux-entrypoint.yaml`. Never overwrite a source tag. Rollback does
+not reverse publisher state or prior Coder API changes.

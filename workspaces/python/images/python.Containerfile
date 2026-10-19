@@ -1,10 +1,5 @@
-# One Containerfile owns the shared runtime and project image targets. The uv
-# image is only a pinned binary source for project builds.
 FROM ghcr.io/astral-sh/uv@sha256:a5727064a0de127bdb7c9d3c1383f3a9ac307d9f2d8a391edc7896c54289ced0 AS uv
 
-# VS Code Python devcontainer 3.2.6-3.13-trixie, pinned to its
-# multi-architecture manifest. The runtime target contains no project
-# dependencies, source, virtual environments, VS Code Web, or extensions.
 FROM mcr.microsoft.com/devcontainers/python:3.2.6-3.13-trixie@sha256:5ea7e72d3c1beb6aefdfea8001483345c39af4898e22f2c543deb6a00802ede4 AS runtime
 
 ARG IMAGE_VERSION=0.1.0
@@ -53,12 +48,9 @@ LABEL org.opencontainers.image.title="Coder Python workspace runtime" \
       org.opencontainers.image.description="VS Code Python devcontainer runtime for an air-gapped Coder workspace" \
       org.opencontainers.image.source="https://github.com/fabian1heinrich/coder-workspaces" \
       org.opencontainers.image.version="${IMAGE_VERSION}" \
-      io.coder.semver-policy="immutable-v1" \
       io.coder.workspace.runtime="python" \
       io.coder.workspace.source-image="mcr.microsoft.com/devcontainers/python:3.2.6-3.13-trixie@sha256:5ea7e72d3c1beb6aefdfea8001483345c39af4898e22f2c543deb6a00802ede4"
 
-# Project images share the runtime layers above and add only a selected locked
-# environment. Build the runtime target directly for a plain Python workspace.
 FROM runtime AS project
 
 ARG PROJECT
@@ -93,7 +85,6 @@ LABEL org.opencontainers.image.title="${PROJECT} Python environment" \
       org.opencontainers.image.description="Prebuilt offline uv environment for ${PROJECT}" \
       org.opencontainers.image.source="https://github.com/fabian1heinrich/coder-workspaces" \
       org.opencontainers.image.version="${IMAGE_VERSION}" \
-      io.coder.semver-policy="immutable-v1" \
       io.coder.project.name="${PROJECT}" \
       io.coder.project.environment.python="3.13" \
       io.coder.project.environment.uv="0.8.15"

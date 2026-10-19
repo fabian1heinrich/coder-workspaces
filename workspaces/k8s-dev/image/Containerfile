@@ -1,5 +1,3 @@
-# Download the exact Kubernetes clients on the connected build host and verify
-# each artifact before it can enter the runtime image.
 FROM mcr.microsoft.com/devcontainers/base:2.2.3-trixie@sha256:6ee2b4097c75d33e9a94d941577a3286e5d629434fba384688b06daeeaaeac99 AS tools
 
 USER root
@@ -16,8 +14,6 @@ RUN set -eux; \
     install -m 0555 /tmp/linux-amd64/helm /out/helm; \
     install -m 0555 /tmp/kubectl /out/kubectl
 
-# VS Code Debian devcontainer 2.2.3-trixie, pinned to its multi-architecture
-# manifest. code-server remains a separate read-only OCI image volume.
 FROM mcr.microsoft.com/devcontainers/base:2.2.3-trixie@sha256:6ee2b4097c75d33e9a94d941577a3286e5d629434fba384688b06daeeaaeac99 AS runtime
 
 ARG IMAGE_VERSION=0.1.0
@@ -79,7 +75,6 @@ LABEL org.opencontainers.image.title="Coder Kubernetes workspace runtime" \
     org.opencontainers.image.description="VS Code Debian devcontainer runtime for an air-gapped Kubernetes operations workspace" \
     org.opencontainers.image.source="https://github.com/fabian1heinrich/coder-workspaces" \
     org.opencontainers.image.version="${IMAGE_VERSION}" \
-    io.coder.semver-policy="immutable-v1" \
     io.coder.workspace.runtime="kubernetes" \
     io.coder.workspace.source-image="mcr.microsoft.com/devcontainers/base:2.2.3-trixie@sha256:6ee2b4097c75d33e9a94d941577a3286e5d629434fba384688b06daeeaaeac99" \
     io.coder.workspace.tool.helm="4.3.1" \

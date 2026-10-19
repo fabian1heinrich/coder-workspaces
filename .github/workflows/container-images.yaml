@@ -2,7 +2,7 @@ name: Container images
 
 on:
   pull_request:
-    paths:
+    paths: &container_paths
       - ".github/workflows/container-images.yaml"
       - "*.Containerfile"
       - "modules/**"
@@ -10,11 +10,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - ".github/workflows/container-images.yaml"
-      - "*.Containerfile"
-      - "modules/**"
-      - "workspaces/**"
+    paths: *container_paths
   workflow_dispatch:
 
 env:
@@ -63,7 +59,7 @@ jobs:
       contents: read
     strategy:
       fail-fast: false
-      matrix:
+      matrix: &image_matrix
         include:
           - image: coder
             file: coder.Containerfile
@@ -77,36 +73,36 @@ jobs:
           - image: code-server
             file: workspaces/python/images/code-server.Containerfile
             version: 0.1.0
-            managed_semver: true
+            workspace: true
           - image: python-vsix
             file: workspaces/python/extensions/python-extensions.Containerfile
             version: 0.1.0
-            managed_semver: true
+            workspace: true
           - image: python-workspace
             file: workspaces/python/images/python.Containerfile
             version: 0.1.0
             target: runtime
-            managed_semver: true
+            workspace: true
           - image: dupe-trooper
             file: workspaces/python/images/python.Containerfile
             version: 0.1.0
             project: dupe-trooper
             target: project
-            managed_semver: true
+            workspace: true
           - image: deja-doc
             file: workspaces/python/images/python.Containerfile
             version: 0.1.0
             project: deja-doc
             target: project
-            managed_semver: true
+            workspace: true
           - image: k8s-workspace
             file: workspaces/k8s-dev/image/Containerfile
             version: 0.1.0
-            managed_semver: true
+            workspace: true
           - image: k8s-vsix
             file: workspaces/k8s-dev/extensions/k8s-extensions.Containerfile
             version: 0.1.0
-            managed_semver: true
+            workspace: true
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
@@ -119,7 +115,7 @@ jobs:
           push: false
           tags: |
             ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:sha-${{ github.sha }}
-            ${{ matrix.version && format('{0}/{1}:{2}', env.IMAGE_PREFIX, matrix.image, matrix.version) || '' }}
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:${{ matrix.version }}
           build-args: |
             IMAGE_VERSION=${{ matrix.version }}
             PROJECT=${{ matrix.project }}
@@ -136,50 +132,7 @@ jobs:
       packages: write
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - image: coder
-            file: coder.Containerfile
-            version: 2.36.0-airgap
-          - image: coderd-provider
-            file: coderd-provider.Containerfile
-            version: 0.0.23
-          - image: coder-modules
-            file: modules/Containerfile
-            version: 0.1.0
-          - image: code-server
-            file: workspaces/python/images/code-server.Containerfile
-            version: 0.1.0
-            managed_semver: true
-          - image: python-vsix
-            file: workspaces/python/extensions/python-extensions.Containerfile
-            version: 0.1.0
-            managed_semver: true
-          - image: python-workspace
-            file: workspaces/python/images/python.Containerfile
-            version: 0.1.0
-            target: runtime
-            managed_semver: true
-          - image: dupe-trooper
-            file: workspaces/python/images/python.Containerfile
-            version: 0.1.0
-            project: dupe-trooper
-            target: project
-            managed_semver: true
-          - image: deja-doc
-            file: workspaces/python/images/python.Containerfile
-            version: 0.1.0
-            project: deja-doc
-            target: project
-            managed_semver: true
-          - image: k8s-workspace
-            file: workspaces/k8s-dev/image/Containerfile
-            version: 0.1.0
-            managed_semver: true
-          - image: k8s-vsix
-            file: workspaces/k8s-dev/extensions/k8s-extensions.Containerfile
-            version: 0.1.0
-            managed_semver: true
+      matrix: *image_matrix
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
@@ -189,7 +142,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
       - name: Publish platform image
-        if: matrix.managed_semver != true
+        if: matrix.workspace != true
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
         with:
           context: .
@@ -199,7 +152,7 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:sha-${{ github.sha }}
-            ${{ matrix.version && format('{0}/{1}:{2}', env.IMAGE_PREFIX, matrix.image, matrix.version) || '' }}
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:${{ matrix.version }}
           build-args: |
             IMAGE_VERSION=${{ matrix.version }}
             PROJECT=${{ matrix.project }}
@@ -207,75 +160,23 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
-      - name: Publish workspace image by digest
-        if: matrix.managed_semver == true
-        id: workspace_build
+      - name: Publish workspace image
+        if: matrix.workspace == true
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        env:
+          SOURCE_DATE_EPOCH: "0"
         with:
           context: .
           file: ${{ matrix.file }}
           target: ${{ matrix.target }}
           platforms: linux/amd64
           provenance: false
-          outputs: type=image,name=${{ env.IMAGE_PREFIX }}/${{ matrix.image }},push-by-digest=true,name-canonical=true,push=true
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:sha-${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:${{ matrix.version }}
           build-args: |
             IMAGE_VERSION=${{ matrix.version }}
             PROJECT=${{ matrix.project }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
-
-      - name: Publish immutable workspace image tags
-        if: matrix.managed_semver == true
-        env:
-          BUILD_DIGEST: ${{ steps.workspace_build.outputs.digest }}
-          IMAGE_NAME: ${{ matrix.image }}
-          IMAGE_VERSION: ${{ matrix.version }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          image="${IMAGE_PREFIX,,}/${IMAGE_NAME}"
-          source_ref="$image@$BUILD_DIGEST"
-          built_version="$(docker buildx imagetools inspect "$source_ref" \
-            --format '{{ index .Image.Config.Labels "org.opencontainers.image.version" }}')"
-          test "$built_version" = "$IMAGE_VERSION" || {
-            printf 'Built image version %s does not match requested version %s\n' \
-              "$built_version" "$IMAGE_VERSION" >&2
-            exit 1
-          }
-          publish_tag() {
-            local tag="$1"
-            local allow_legacy_replacement="$2"
-            local target_ref="$image:$tag"
-            local existing_digest
-            if existing_digest="$(docker buildx imagetools inspect "$target_ref" \
-              --format '{{.Manifest.Digest}}' 2>/dev/null)"; then
-              if test "$existing_digest" = "$BUILD_DIGEST"; then
-                return
-              fi
-              if test "$allow_legacy_replacement" = true \
-                && test "$IMAGE_VERSION" = 0.1.0; then
-                local policy
-                policy="$(docker buildx imagetools inspect "$target_ref" \
-                  --format '{{json .Image.Config.Labels}}' \
-                  | jq -r '."io.coder.semver-policy" // ""')"
-                if test "$policy" != immutable-v1; then
-                  printf 'Replacing legacy tag %s once; prior digest remains available by its sha tag\n' \
-                    "$target_ref"
-                  docker buildx imagetools create --prefer-index=false \
-                    --tag "$target_ref" "$source_ref"
-                  test "$(docker buildx imagetools inspect "$target_ref" \
-                    --format '{{.Manifest.Digest}}')" = "$BUILD_DIGEST"
-                  return
-                fi
-              fi
-              printf 'Refusing to move immutable tag %s from %s to %s\n' \
-                "$target_ref" "$existing_digest" "$BUILD_DIGEST" >&2
-              exit 1
-            fi
-            docker buildx imagetools create --prefer-index=false \
-              --tag "$target_ref" "$source_ref"
-            test "$(docker buildx imagetools inspect "$target_ref" \
-              --format '{{.Manifest.Digest}}')" = "$BUILD_DIGEST"
-          }
-          publish_tag "sha-$GITHUB_SHA" false
-          publish_tag "$IMAGE_VERSION" true

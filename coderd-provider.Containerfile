@@ -1,7 +1,5 @@
 # syntax=docker/dockerfile:1.6
-# Reusable Coder API OpenTofu runner image.
 
-# OpenTofu v1.12.1 minimal, pinned to its multi-architecture OCI manifest.
 FROM ghcr.io/opentofu/opentofu@sha256:fbfeb438edb0d0116239096964595c7cbe57d9c9924359d8fa86297cf0f0f810 AS opentofu
 
 # The Coder base supplies a trusted CA bundle and a non-root runtime user while
@@ -15,7 +13,6 @@ ARG TARGETARCH
 ARG CODERD_PROVIDER_VERSION=0.0.23
 
 WORKDIR /work
-# OpenTofu retains the terraform block and lock-file names for compatibility.
 RUN set -eux; \
   printf '%s\n' \
   'terraform {' \

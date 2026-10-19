@@ -1,7 +1,5 @@
 # syntax=docker/dockerfile:1.6
 
-# Reuse the pinned Coder image as a build environment. It provides the small
-# set of tools needed to fetch, verify, and normalize the module archives.
 FROM ghcr.io/coder/coder@sha256:215e6d4c1260e213a283dbac9b669b7bd79f5dd25974d72ae18b45c565f062bb AS builder
 
 USER root
@@ -54,6 +52,4 @@ LABEL org.opencontainers.image.title="Coder OpenTofu modules" \
   io.coder.module.git-config.version="1.0.34" \
   io.coder.image-volume.mount-path="/opt/coder-modules"
 
-# The image root becomes /opt/coder-modules when consumed as a Kubernetes
-# image volume.
 COPY --from=builder /out/ /

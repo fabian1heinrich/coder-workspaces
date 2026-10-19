@@ -1,4 +1,3 @@
-# Shared publisher workload; consuming environments provide runtime values.
 apiVersion: batch/v1
 kind: Job
 metadata:

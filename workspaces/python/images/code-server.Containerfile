@@ -28,12 +28,8 @@ LABEL org.opencontainers.image.title="Coder code-server standalone payload" \
   org.opencontainers.image.description="Read-only code-server payload for an air-gapped Coder workspace" \
   org.opencontainers.image.source="https://github.com/fabian1heinrich/coder-workspaces" \
   org.opencontainers.image.version="${IMAGE_VERSION}" \
-  io.coder.semver-policy="immutable-v1" \
   io.coder.code-server.version="${CODE_SERVER_VERSION}" \
   io.coder.code-server.source-image="ghcr.io/coder/code-server@sha256:ccd326184d71efc5ebb94155eda7bb30153902342a35dbc8525450d81aa55012" \
   io.coder.image-volume.mount-path="/opt/vscode-server"
 
-# The image root becomes /opt/vscode-server when consumed as a Kubernetes
-# image volume. Runtime configuration, extensions, and user data stay outside
-# this read-only image.
 COPY --from=source /opt/code-server/ /

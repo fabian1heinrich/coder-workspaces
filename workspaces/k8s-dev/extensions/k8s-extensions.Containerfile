@@ -11,9 +11,7 @@ RUN mkdir -p \
 
 COPY --chmod=0444 workspaces/k8s-dev/extensions/k8s-extensions.lock /tmp/k8s-extensions.lock
 
-# The lock records each approved extension's immutable version, platform,
-# source URL, and VSIX checksum. YAML is listed before the Kubernetes extension
-# because the latter declares it as a hard dependency.
+# Preserve lock order because the Kubernetes extension depends on YAML.
 RUN set -eu; \
   if [ "${TARGETARCH}" != "amd64" ]; then \
   printf 'Unsupported extension architecture: %s (only amd64 is supported)\n' "${TARGETARCH}" >&2; \
@@ -54,10 +52,8 @@ LABEL org.opencontainers.image.title="Coder Kubernetes approved VSIX extension s
   org.opencontainers.image.description="Offline VS Code extension payload for the Kubernetes operations workspace" \
   org.opencontainers.image.source="https://github.com/fabian1heinrich/coder-workspaces" \
   org.opencontainers.image.version="${IMAGE_VERSION}" \
-  io.coder.semver-policy="immutable-v1" \
   io.coder.extension-set="k8s" \
   io.coder.code-server.version="4.135.0" \
   io.coder.code-server.image="ghcr.io/coder/code-server@sha256:ccd326184d71efc5ebb94155eda7bb30153902342a35dbc8525450d81aa55012"
 
-# The image root becomes /opt/vsix when consumed as a Kubernetes image volume.
 COPY --from=validator --chown=1000:1000 /home/coder/vsix/ /

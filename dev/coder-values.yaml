@@ -1,4 +1,3 @@
-# Helm values for the Coder control plane.
 coder:
   image:
     # The pinned chart concatenates repo and tag. Split @sha256:<digest> at

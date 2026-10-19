@@ -1,14 +1,12 @@
 # Production release
 
-Production uses two mirror-only Zarf packages. `source/` carries the small,
-frequently changing Flux source. `images/` carries the publisher, workspace,
-code-server, and VSIX images and changes only when those artifacts change.
+Production uses two mirror-only Zarf packages: `source/` carries the Flux
+source, while `images/` carries its publisher, workspace, code-server, and VSIX
+images.
 
-Use the repository-root `build-release` or `copy-release` recipes for ordinary
-template changes. Use their `-all` variants when image references change or
-when preparing complete recovery media. Images must reach Zot before the Flux
-source that references them. Generated Zarf package archives are written to the
-repository root.
+Use the root `build-release` or `copy-release` recipes for template changes and
+their `-all` variants when image references change or complete recovery media
+is needed. Mirror images before the Flux source that references them.
 
 For an `-all` build, set `K8S_WORKSPACE_IMAGE` and `K8S_VSIX_IMAGE` to the
 SemVer-tagged, digest-pinned references published by the container image
@@ -19,20 +17,16 @@ images package; an unversioned or digest-free reference is rejected.
 the Zarf transport image list remains digest-only for registry-tool
 compatibility.
 
-The packages are transport archives. Consume them only with
-`zarf package mirror-resources`; never deploy them.
+Consume these transport archives only with `zarf package mirror-resources`;
+never deploy them.
 
-Both transferred package versions and the OCI tag are derived from committed
-`HEAD` as `YYYY.MM.DD-g<12-character-sha>`. The source build renders
-`flux-entrypoint.yaml` with the resulting digest. Mirroring does not activate
-the source; applying that copied selector makes the consuming application root
-activate it.
+Package versions and the OCI tag are derived from committed `HEAD` as
+`YYYY.MM.DD-g<12-character-sha>`. The generated `flux-entrypoint.yaml` selects
+the exact source digest; mirroring alone does not activate it.
 
-The source payload is namespace-neutral. Its generated entry point records the
-exact OCI digest in the platform's watched release-selector ConfigMap. The
-consuming platform owns the `OCIRepository` and child Kustomization that target
-the dedicated `coder-template-publisher` namespace and configure the namespace
-where Coder provisions user workspaces.
+The source is namespace-neutral. The consuming platform owns the
+`OCIRepository`, child Kustomization, publisher namespace, and workspace
+namespace configuration.
 
 Artifact definitions use `registry.invalid` as a logical transport registry.
 Release packaging resolves it to the fixed connected source registry

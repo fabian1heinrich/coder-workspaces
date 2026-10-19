@@ -1,25 +1,11 @@
 # Workspaces
 
-This directory owns two independent Coder templates for disconnected
-Kubernetes environments:
+This directory owns two Coder templates for disconnected Kubernetes:
 
 - `python-workspace` is a Python 3.13 development environment with approved
   extensions and optional locked project environments.
 - `k8s-dev` is a language-neutral operations environment for working with a
   Kubernetes cluster through `kubectl`, Kustomize, and Helm.
-
-| Path                                                | Contents                                                |
-| --------------------------------------------------- | ------------------------------------------------------- |
-| `python/images/python.Containerfile`                | Python runtime and locked project-image build targets   |
-| `python/images/code-server.Containerfile`           | Shared read-only code-server payload                    |
-| `python/extensions/python-extensions.Containerfile` | Approved Python VSIX payload                            |
-| `python/extensions/python-extensions.lock`          | VSIX versions, sources, platforms, and checksums        |
-| `python/images/dupe-trooper/`                       | Locked `dupe-trooper` uv environment                    |
-| `python/images/deja-doc/`                           | Locked `deja-doc` uv environment                        |
-| `k8s-dev/`                                          | Kubernetes client workspace and cluster-access contract |
-| `k8s-dev/image/Containerfile`                       | Kubernetes runtime, clients, sources, and checksums     |
-| `k8s-dev/extensions/k8s-extensions.Containerfile`   | Approved Kubernetes VSIX payload                        |
-| `k8s-dev/extensions/k8s-extensions.lock`            | Kubernetes VSIX sources, versions, and checksums        |
 
 ## Runtime behavior
 
@@ -32,17 +18,12 @@ into persistent `/home/coder`; the Kubernetes template gets checksum-locked
 contacts package managers, extension marketplaces, or public artifact
 registries.
 
-The Python template's project profiles and image choices are documented in
-[`python/README.md`](python/README.md). The Kubernetes template exposes no
-Python or project-image choices. It uses a Trixie devcontainer runtime, an
-optional mirrored Git repository, and an in-cluster kubeconfig backed by the
-Pod's rotating ServiceAccount token; see [`k8s-dev/README.md`](k8s-dev/README.md).
+See the [Python workspace](python/README.md) and [Kubernetes
+workspace](k8s-dev/README.md) documentation for template-specific behavior.
 
-The environment that publishes `k8s-dev` selects the existing ServiceAccount
-and default target namespace. RBAC remains environment-owned so the template
-cannot silently grant cluster-wide access. Bind only the namespaces and verbs
-that workspace users require. The local default ServiceAccount normally has no
-API permissions.
+The `k8s-dev` environment selects an existing ServiceAccount and target
+namespace. RBAC remains environment-owned; grant only the required namespaces
+and verbs.
 
 ## Cluster requirements
 
@@ -58,27 +39,17 @@ API permissions.
   enforces the platform egress policy. The StorageClass must support volume
   expansion to grow an existing home disk.
 
-## Release and verification
+## Build and release
 
-`just build-template-artifacts` builds the repository-owned workspace images
-and publisher runner for the local package. For deployment, use the root
-[local workflow](../README.md#local-deployment).
+`just build-template-artifacts` builds the workspace images and publisher for
+the local package. Use the root [local workflow](../README.md#local-deployment)
+for deployment.
 
-After publication, verify each template without public egress. For `k8s-dev`,
-confirm `kubectl version --client`, `helm version`, the expected result from
-`kubectl auth can-i --list`, and persistence of a marker under `/home/coder`
-after Pod replacement. For `python-workspace`, verify Python, code-server, and
-the approved extensions.
+Image provenance and upgrade steps live in each workspace's Containerfiles,
+locks, and README.
 
-Containerfile-based image sources live in their owning Containerfiles. The
-Kubernetes workspace source and tool provenance live in `k8s-dev/image/`.
-Extension provenance remains in the owning Python and Kubernetes extension
-locks.
-
-Published workspace images have independent SemVer tags and `sha-<commit>`
+Published workspace images have mutable SemVer aliases and `sha-<commit>`
 traceability tags. Consumers retain the readable version in a
-`:<version>@sha256:<digest>` reference; update every consumer whenever a
-published image digest changes. The first `0.1.0` publication may replace a
-pre-policy tag that lacks `io.coder.semver-policy=immutable-v1`; the old digest
-remains reachable by its commit tag. Once marked, CI refuses to move that
-SemVer tag.
+`:<version>@sha256:<digest>` reference; the digest, not the tag, is the
+immutable identity. Update every consumer when a digest changes. Retain old
+digests while any template revision, release, package, or workspace uses them.

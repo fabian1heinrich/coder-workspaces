@@ -1,10 +1,7 @@
 # syntax=docker/dockerfile:1.6
-# Coder Community control-plane and built-in-provisioner runtime image.
 
-# OpenTofu v1.12.1 minimal, pinned to its multi-architecture OCI manifest.
 FROM ghcr.io/opentofu/opentofu@sha256:fbfeb438edb0d0116239096964595c7cbe57d9c9924359d8fa86297cf0f0f810 AS opentofu
 
-# Coder v2.36.0, pinned to its multi-architecture OCI manifest.
 FROM ghcr.io/coder/coder@sha256:215e6d4c1260e213a283dbac9b669b7bd79f5dd25974d72ae18b45c565f062bb AS provider-mirror
 
 USER root
