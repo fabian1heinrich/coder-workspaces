@@ -60,8 +60,16 @@ COPY --from=tools --chown=root:root --chmod=0555 \
     /out/kubectl \
     /usr/local/bin/
 
-RUN test -x /usr/local/bin/helm \
-    && test -x /usr/local/bin/kubectl
+# Workspace startup is repo-owned shell, so it lives in the image instead of
+# being embedded in a template pod manifest.
+COPY --chown=root:root --chmod=0555 \
+    workspaces/workspace-startup.sh \
+    /usr/local/bin/workspace-startup
+
+RUN set -eux; \
+    test -x /usr/local/bin/helm; \
+    test -x /usr/local/bin/kubectl; \
+    test -x /usr/local/bin/workspace-startup
 
 ENV HOME=/home/coder \
     SHELL=/usr/bin/zsh \
@@ -72,7 +80,7 @@ USER coder
 WORKDIR /home/coder
 
 LABEL org.opencontainers.image.title="Coder Kubernetes workspace runtime" \
-    org.opencontainers.image.description="VS Code Debian devcontainer runtime for an air-gapped Kubernetes operations workspace" \
+    org.opencontainers.image.description="Debian dev container runtime for an air-gapped Kubernetes operations workspace" \
     org.opencontainers.image.source="https://github.com/fabian1heinrich/coder-workspaces" \
     org.opencontainers.image.version="${IMAGE_VERSION}" \
     io.coder.workspace.runtime="kubernetes" \

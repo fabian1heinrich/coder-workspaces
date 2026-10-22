@@ -40,28 +40,6 @@ variable "vsix_image" {
   }
 }
 
-variable "kubernetes_service_account_name" {
-  type        = string
-  description = "Existing ServiceAccount mounted into the workspace for Kubernetes API access. Its RBAC is environment-owned."
-  default     = "default"
-
-  validation {
-    condition     = can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", var.kubernetes_service_account_name))
-    error_message = "kubernetes_service_account_name must be a DNS label."
-  }
-}
-
-variable "kubernetes_target_namespace" {
-  type        = string
-  description = "Default namespace written to the workspace's in-cluster kubeconfig."
-  default     = "default"
-
-  validation {
-    condition     = can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", var.kubernetes_target_namespace))
-    error_message = "kubernetes_target_namespace must be a DNS label."
-  }
-}
-
 variable "home_storage_class" {
   type        = string
   description = "StorageClass for persistent workspace homes; empty selects the cluster default."
@@ -73,21 +51,32 @@ variable "home_storage_class" {
   }
 }
 
-variable "git_secret_name" {
+variable "git_auth_mode" {
   type        = string
-  description = "Secret containing username and password keys for the internal Zarf Gitea service."
-  default     = "private-git-server"
+  description = "Git authentication mode: anonymous, secret, or external-auth."
+  default     = "external-auth"
 
   validation {
-    condition     = var.git_secret_name == "" || can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", var.git_secret_name))
-    error_message = "git_secret_name must be empty or a DNS label."
+    condition     = contains(["anonymous", "secret", "external-auth"], var.git_auth_mode)
+    error_message = "git_auth_mode must be anonymous, secret, or external-auth."
+  }
+}
+
+variable "git_credentials_secret_name" {
+  type        = string
+  description = "Secret containing username and password keys when git_auth_mode is secret."
+  default     = ""
+
+  validation {
+    condition     = var.git_credentials_secret_name == "" || can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", var.git_credentials_secret_name))
+    error_message = "git_credentials_secret_name must be empty or a DNS label."
   }
 }
 
 variable "image_pull_secret_name" {
   type        = string
   description = "Optional image pull Secret used by workspace Pods."
-  default     = ""
+  default     = "private-registry"
 
   validation {
     condition     = var.image_pull_secret_name == "" || can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", var.image_pull_secret_name))
@@ -98,22 +87,11 @@ variable "image_pull_secret_name" {
 variable "git_base_url" {
   type        = string
   description = "Base URL of the Git service used by workspace repositories."
-  default     = "http://zarf-gitea-http.zarf.svc.cluster.local:3000"
+  default     = ""
 
   validation {
-    condition     = can(regex("^https?://[^[:space:]/]+(:[0-9]+)?$", var.git_base_url))
-    error_message = "git_base_url must be an HTTP(S) origin without a trailing slash."
-  }
-}
-
-variable "git_auth_mode" {
-  type        = string
-  description = "Workspace Git authentication mode: zarf-secret or external-auth."
-  default     = "zarf-secret"
-
-  validation {
-    condition     = contains(["zarf-secret", "external-auth"], var.git_auth_mode)
-    error_message = "git_auth_mode must be zarf-secret or external-auth."
+    condition     = var.git_base_url == "" || can(regex("^https?://[^[:space:]/]+(:[0-9]+)?$", var.git_base_url))
+    error_message = "git_base_url must be empty or an HTTP(S) origin without a trailing slash."
   }
 }
 
@@ -136,7 +114,7 @@ variable "platform_ca_config_map_name" {
 
 variable "default_repository" {
   type        = string
-  description = "Default owner/repository path in the internal Git service."
+  description = "Default owner/repository path in the configured Git service."
   default     = ""
 
   validation {
@@ -147,7 +125,7 @@ variable "default_repository" {
 
 variable "default_git_branch" {
   type        = string
-  description = "Default branch or immutable revision for the mirrored repository."
+  description = "Default repository branch or revision."
   default     = "main"
 
   validation {

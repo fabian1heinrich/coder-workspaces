@@ -42,13 +42,8 @@ resource "coder_metadata" "workspace" {
   icon        = "/icon/k8s.svg"
 
   item {
-    key   = "Kubernetes identity"
-    value = "system:serviceaccount:${var.namespace}:${var.kubernetes_service_account_name}"
-  }
-
-  item {
-    key   = "Default namespace"
-    value = var.kubernetes_target_namespace
+    key   = "Kubernetes access"
+    value = "User-supplied ~/.kube/config"
   }
 
   item {
@@ -114,7 +109,7 @@ module "code_server" {
   agent_id       = coder_agent.main.id
   folder         = local.workspace_folder
   offline        = true
-  install_prefix = "/opt/vscode-server"
+  install_prefix = "/opt/code-server"
   extensions_dir = "/home/coder/.local/share/code-server/extensions"
   settings = {
     "extensions.autoCheckUpdates"              = false

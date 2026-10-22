@@ -3,12 +3,15 @@
 `python.Containerfile` is the only Python image definition. Its `runtime`
 target is the plain shared Python 3.13 workspace, and its `project` target adds
 a selected project's locked environment while reusing the runtime layers.
-The `dupe-trooper/` and `deja-doc/` directories contain only their current
+One directory per entry in
+[`../projects.json`](../projects.json) contains only that project's current
 `pyproject.toml` and `uv.lock`; application source and project virtual
-environments never enter an image.
+environments never enter an image. The build and the CI matrix iterate the
+catalog, so a new project needs its catalog entry, this directory, and its
+image in the transport package lists.
 
-The runtime derives from the digest-pinned VS Code Python 3.13 Trixie
-devcontainer. To upgrade it, update the exact `FROM` reference and matching
+The runtime derives from the digest-pinned Microsoft Python 3.13 Trixie dev
+container. To upgrade it, update the exact `FROM` reference and matching
 source-image label together. Build assertions preserve the `coder` account
 contract.
 

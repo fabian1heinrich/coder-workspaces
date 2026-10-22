@@ -9,7 +9,7 @@ metadata:
 variables:
   - name: CODER_ADMIN_PASSWORD
     description: Password for the initial Coder administrator.
-    default: ChangeMe123_
+    default: CoderPassword123?!
     prompt: false
     sensitive: true
     pattern: "^[A-Za-z0-9._~-]{8,128}$"
@@ -30,12 +30,16 @@ variables:
     default: coder
     prompt: false
     sensitive: true
+  - name: DEFAULT_REPOSITORY
+    description: Mirrored workspace repository; empty starts workspaces without one.
+    default: zarf-git-user/uv-devcontainer-322178071
+    prompt: false
+  - name: DEFAULT_DOTFILES_REPOSITORY
+    description: Mirrored dotfiles repository; empty disables the dotfiles module.
+    default: zarf-git-user/coder-dotfiles-3319437223
+    prompt: false
 
 constants:
-  - name: PUBLISH_TEMPLATE
-    value: all
-  - name: UPDATE_WORKSPACE
-    value: all
   - name: CODER_IMAGE_DIGEST
     value: "4a42711469c853fc68b2d82178d4132e87f438ea0af930ae7d5f0ed2445b557d"
   - name: CODER_IMAGE_REPOSITORY
@@ -43,7 +47,7 @@ constants:
   - name: CODER_MODULES_IMAGE
     value: "ghcr.io/fabian1heinrich/coder-workspaces/coder-modules@sha256:9d5660abd1eeeb1420713cd258ee4825638d16559e7a4f56a50ae4af35508562"
   - name: PUBLISHER_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/coderd-provider@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916"
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/publisher@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916"
   - name: CODE_SERVER_IMAGE
     value: "ghcr.io/fabian1heinrich/coder-workspaces/code-server:0.1.0@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8"
   - name: WORKSPACE_IMAGE
@@ -52,10 +56,10 @@ constants:
     value: "ghcr.io/fabian1heinrich/coder-workspaces/k8s-workspace:0.1.0@sha256:ef4b0b979aaa284ea8fef5040b6a8d9bb508da8d62d7d7b9bcc227b123d40493"
   - name: K8S_VSIX_IMAGE
     value: "ghcr.io/fabian1heinrich/coder-workspaces/k8s-vsix:0.1.0@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836"
-  - name: DUPE_TROOPER_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/dupe-trooper:0.1.0@sha256:301aa80382431ca6f6361e36c0c1220185af58971441267b1ae129cfffcd2935"
   - name: DEJA_DOC_IMAGE
     value: "ghcr.io/fabian1heinrich/coder-workspaces/deja-doc:0.1.0@sha256:fd540c6082c9a97a3a5741a9f357de86c500131ea98e19e4c72ccb594447d3fc"
+  - name: DUPE_TROOPER_IMAGE
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/dupe-trooper:0.1.0@sha256:301aa80382431ca6f6361e36c0c1220185af58971441267b1ae129cfffcd2935"
   - name: VSIX_IMAGE
     value: "ghcr.io/fabian1heinrich/coder-workspaces/python-vsix:0.1.0@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b"
 
@@ -124,6 +128,8 @@ components:
   - name: coder-bootstrap
     description: Create the initial Coder administrator and issue the template publisher credential
     required: true
+    only:
+      flavor: full
     actions:
       onDeploy:
         after:
@@ -131,30 +137,7 @@ components:
               set -eu
               coder_url=http://coder.coder.svc.cluster.local
               ./zarf tools kubectl -n coder rollout status deployment/coder --timeout=2m
-              ./zarf tools kubectl create namespace coder-template-publisher \
-                --dry-run=client -o yaml | ./zarf tools kubectl apply -f -
-
-              publisher_token="$(
-                ./zarf tools kubectl -n coder-template-publisher \
-                  get secret coder-template-publisher-auth \
-                  -o go-template='{{.data.token | base64decode}}' 2>/dev/null || true
-              )"
-              if test -n "${publisher_token}" && printf '%s\n' "${publisher_token}" |
-                ./zarf tools kubectl -n coder exec -i deploy/coder -- env \
-                  CODER_URL="${coder_url}" \
-                  /bin/sh -c '
-                    IFS= read -r CODER_SESSION_TOKEN
-                    export CODER_SESSION_TOKEN
-                    export HOME=/tmp/coder-publisher-token-check
-                    mkdir -p "$HOME"
-                    trap "rm -rf /tmp/coder-publisher-token-check" EXIT
-                    /opt/coder whoami >/dev/null 2>&1
-                  '
-              then
-                exit 0
-              fi
-
-              # shellcheck disable=SC2016
+              ./zarf tools kubectl create namespace coder-template-publisher
               publisher_token="$(
                 printf '%s\n' "${ZARF_VAR_CODER_ADMIN_PASSWORD}" |
                   ./zarf tools kubectl -n coder exec -i deploy/coder -- env \
@@ -163,27 +146,19 @@ components:
                     CODER_FIRST_USER_FULL_NAME="Coder Admin" \
                     CODER_FIRST_USER_EMAIL=admin@coder.local \
                     CODER_FIRST_USER_TRIAL=false \
-                    CODER_PUBLISHER_TOKEN_LIFETIME=168h \
                     /bin/sh -c '
                       IFS= read -r CODER_FIRST_USER_PASSWORD
                       export CODER_FIRST_USER_PASSWORD
-                      export HOME=/tmp/coder-admin-bootstrap
-                      mkdir -p "$HOME"
-                      trap "rm -rf /tmp/coder-admin-bootstrap" EXIT
-                      /opt/coder login "$CODER_URL" >/dev/null 2>&1
-                      /opt/coder tokens remove --delete coder-template-publisher >/dev/null 2>&1 || true
-                      /opt/coder tokens create --name coder-template-publisher --lifetime "$CODER_PUBLISHER_TOKEN_LIFETIME"
+                      /opt/coder login "$CODER_URL" >/dev/null
+                      /opt/coder tokens create \
+                        --name coder-template-publisher \
+                        --lifetime 720h
                     '
               )"
               printf '%s' "${publisher_token}" |
                 ./zarf tools kubectl -n coder-template-publisher \
                   create secret generic coder-template-publisher-auth \
-                  --from-file=token=/dev/stdin \
-                  --dry-run=client \
-                  -o yaml |
-                ./zarf tools kubectl apply -f -
-              ./zarf tools kubectl -n coder delete \
-                secret/coder-template-publisher-auth --ignore-not-found
+                  --from-file=token=/dev/stdin
             description: Bootstrap the Coder administrator and template publisher credential
             mute: true
 
@@ -194,7 +169,7 @@ components:
     required: false
     default: true
     images:
-      - ghcr.io/fabian1heinrich/coder-workspaces/coderd-provider@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916
+      - ghcr.io/fabian1heinrich/coder-workspaces/publisher@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916
       - ghcr.io/fabian1heinrich/coder-workspaces/code-server@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8
       - ghcr.io/fabian1heinrich/coder-workspaces/python-workspace@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266
       - ghcr.io/fabian1heinrich/coder-workspaces/k8s-workspace@sha256:ef4b0b979aaa284ea8fef5040b6a8d9bb508da8d62d7d7b9bcc227b123d40493

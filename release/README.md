@@ -1,30 +1,71 @@
 # Production release
 
-Production uses two mirror-only Zarf packages: `source/` carries the Flux
-source, while `images/` carries its publisher, workspace, code-server, and VSIX
-images.
+Production uses two Zarf packages. `images/` is mirror-only and carries the
+publisher, workspace, module, code-server, and VSIX images. `publish/` is
+deployed, and publishes the workspace templates to an existing Coder
+deployment.
 
-Use the root `build-release` or `copy-release` recipes for template changes and
-their `-all` variants when image references change or complete recovery media
-is needed. Mirror images before the Flux source that references them.
+The production cluster is not Zarf-initialized. It has its own registry, so
+the publication package is deployed with `zarf package deploy --connected`,
+which applies the manifests as they are, without a Zarf registry, agent, or
+image mutation. Every image reference it applies is already a fully qualified
+reference to the internal registry, built from the `REGISTRY` variable and the
+digests baked in at create time.
 
-Published image references are pinned in `images/zarf.yaml` and recorded as
-SemVer-and-digest references in `RELEASE-METADATA`. Update both consumers when
-an image version changes. The Zarf transport image list remains digest-only for
-registry-tool compatibility.
+`SHA256SUMS` records the contents of the release media.
 
-Consume these transport archives only with `zarf package mirror-resources`;
-never deploy them.
+## Build release media
 
-Package versions and the OCI tag are derived from committed `HEAD` as
-`YYYY.MM.DD-g<12-character-sha>`. The generated `flux-entrypoint.yaml` selects
-the exact source digest; mirroring alone does not activate it.
+Run from the repository root with its direnv environment loaded. Build only the
+publication package for template changes, or include the image mirror package
+when an image reference changed:
 
-The source is namespace-neutral. The consuming platform owns the
-`OCIRepository`, child Kustomization, publisher namespace, and workspace
-namespace configuration.
+```sh
+just build-release
+just build-release-all
+```
+
+The bundle is written to `$BUILD_DIR/coder-workspaces`. Copy that
+directory to the transport media. Mirror images before publishing templates
+that reference them.
+
+## The publishing credential
+
+The publisher authenticates with a Coder API token supplied at deploy time as
+`ZARF_VAR_CODER_TOKEN`, never from a stored Secret. Create it with the Coder
+CLI immediately before publishing, for an identity that holds only the rights
+template publication needs. The package creates a Secret from it, runs the Job,
+and deletes the Secret again on both the success and the failure path, so no
+credential outlives the publication and none is ever written to this
+repository, the package, or the release media.
+
+A failed publication fails the deploy: the Job is a Zarf health check, so an
+expired or insufficient token surfaces immediately rather than in a controller
+log. Re-run the air-gapped publication command with a fresh token.
+
+Publication is idempotent. Unchanged template content and unchanged image
+digests resolve to a template version that is already active, and nothing is
+republished.
+
+## Deployment-owned values
+
+The package fixes the Coder and publisher namespaces, pull Secret, Git auth
+mode, and default branches. `release/publish/zarf.yaml` documents the remaining
+deployment values. The consuming platform provides the registry, those fixed
+names, Git access, and any selectable project images.
+
+The templates resolve the pinned Coder modules and the shared `workspace-pod`
+module from the `coder-modules` image at `/opt/coder-modules`. The consuming
+platform must mount that image, mirrored by the images package, on the control
+plane that runs the built-in provisioners; workspace builds fail at module
+resolution otherwise.
+
+Package versions and the publication package's OCI-free release identity are
+derived from committed `HEAD` as `YYYY.MM.DD-g<12-character-sha>`.
 
 Artifact definitions use `registry.invalid` as a logical transport registry.
-Release packaging resolves it to the fixed connected source registry
-`ghcr.io`; the disconnected destination is selected by
-`zarf package mirror-resources` and by the consuming Flux configuration.
+Release packaging resolves it to the fixed connected source registry `ghcr.io`;
+the disconnected destination is selected by `zarf package mirror-resources` and
+by the `REGISTRY` variable at publication.
+
+Consume `images/` only with `zarf package mirror-resources`; never deploy it.

@@ -1,0 +1,108 @@
+kind: ZarfPackageConfig
+
+metadata:
+  name: coder-workspaces-publish
+  version: "###ZARF_PKG_TMPL_RELEASE_ID###"
+  description: Publish the Coder workspace templates to an existing Coder deployment
+  architecture: amd64
+
+variables:
+  - name: CODER_TOKEN
+    description: >-
+      Coder API token for the publishing identity. Create it with the Coder CLI
+      immediately before publishing and export it as ZARF_VAR_CODER_TOKEN; it is
+      never stored in this package or the release media.
+    sensitive: true
+    prompt: true
+  - name: REGISTRY
+    description: Internal registry holding the mirrored workspace images.
+    prompt: true
+  - name: PROJECT_IMAGES
+    description: >-
+      Selectable Python projects as catalog-name=image@sha256:<digest> pairs.
+      Empty offers only the plain Python environment.
+    default: ""
+    prompt: false
+  - name: HOME_STORAGE_CLASS
+    description: StorageClass for persistent workspace homes; empty uses the default.
+    default: ""
+    prompt: false
+  - name: GIT_BASE_URL
+    description: Base URL of the Git service used by workspace repositories.
+    default: ""
+    prompt: false
+  - name: DEFAULT_REPOSITORY
+    description: Default owner/repository for the Python template.
+    default: ""
+    prompt: false
+  - name: K8S_DEFAULT_REPOSITORY
+    description: Default owner/repository for the k8s-dev template.
+    default: ""
+    prompt: false
+  - name: DEFAULT_DOTFILES_REPOSITORY
+    description: Default dotfiles owner/repository.
+    default: ""
+    prompt: false
+
+# Digests are baked at create time and resolved against the deployment's own
+# registry, which the images package mirrors beforehand.
+constants:
+  - name: PUBLISHER_IMAGE
+    value: "fabian1heinrich/coder-workspaces/publisher@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916"
+  - name: WORKSPACE_IMAGE
+    value: "fabian1heinrich/coder-workspaces/python-workspace:0.1.0@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266"
+  - name: K8S_WORKSPACE_IMAGE
+    value: "fabian1heinrich/coder-workspaces/k8s-workspace:0.1.0@sha256:ef4b0b979aaa284ea8fef5040b6a8d9bb508da8d62d7d7b9bcc227b123d40493"
+  - name: K8S_VSIX_IMAGE
+    value: "fabian1heinrich/coder-workspaces/k8s-vsix:0.1.0@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836"
+  - name: CODE_SERVER_IMAGE
+    value: "fabian1heinrich/coder-workspaces/code-server:0.1.0@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8"
+  - name: VSIX_IMAGE
+    value: "fabian1heinrich/coder-workspaces/python-vsix:0.1.0@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b"
+
+# The production cluster is not Zarf-initialized: it has its own registry and
+# needs no Zarf registry, agent, or image mutation, so this package is deployed
+# with `zarf package deploy --connected`. Every image reference it applies is
+# already a fully qualified reference to that registry.
+components:
+  - name: publish-templates
+    description: Create the publisher credential and run the template publication Job
+    required: true
+    actions:
+      onDeploy:
+        before:
+          - cmd: |
+              set -eu
+              ./zarf tools kubectl -n coder-template-publisher \
+                delete job template-publisher --ignore-not-found --wait=true
+            description: Remove a previous publication Job
+            mute: true
+        # The credential exists only for the duration of the publication, on
+        # both the success and the failure path.
+        after:
+          - cmd: |
+              set -eu
+              ./zarf tools kubectl -n coder-template-publisher \
+                delete secret coder-template-publisher-auth --ignore-not-found
+            description: Remove the publishing credential
+            mute: true
+        onFailure:
+          - cmd: |
+              set -eu
+              ./zarf tools kubectl -n coder-template-publisher \
+                delete secret coder-template-publisher-auth --ignore-not-found
+            description: Remove the publishing credential after a failed publication
+            mute: true
+    manifests:
+      - name: coder-workspace-template-publisher
+        kustomizeAllowAnyDirectory: true
+        kustomizations:
+          - manifests
+    healthChecks:
+      - name: template-publisher
+        namespace: coder-template-publisher
+        apiVersion: batch/v1
+        kind: Job
+
+documentation:
+  readme: ../README.md

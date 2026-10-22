@@ -39,6 +39,15 @@ RUN set -eu; \
   find /out -type d -exec chmod 0755 {} +; \
   find /out -type f -exec chmod 0644 {} +
 
+# The repository-owned workspace pod module ships beside the pinned upstream
+# modules so that every template resolves it from the same read-only payload.
+COPY --chmod=0444 modules/workspace-pod/*.tf /out/workspace-pod/
+
+RUN test -s /out/workspace-pod/main.tf \
+  && test -s /out/workspace-pod/variables.tf \
+  && test -s /out/workspace-pod/outputs.tf \
+  && test -s /out/workspace-pod/versions.tf
+
 FROM scratch
 
 LABEL org.opencontainers.image.title="Coder OpenTofu modules" \
@@ -50,6 +59,7 @@ LABEL org.opencontainers.image.title="Coder OpenTofu modules" \
   io.coder.module.dotfiles.version="1.4.2" \
   io.coder.module.git-clone.version="2.0.3" \
   io.coder.module.git-config.version="1.0.34" \
+  io.coder.module.workspace-pod.version="0.1.0" \
   io.coder.image-volume.mount-path="/opt/coder-modules"
 
 COPY --from=builder /out/ /

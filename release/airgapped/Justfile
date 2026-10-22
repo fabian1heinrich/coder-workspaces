@@ -1,10 +1,16 @@
-set shell := ["direnv", "exec", ".", "bash", "-euo", "pipefail", "-c"]
-
-# Mirror the Flux workspace source without activating it.
-mirror:
-    SSL_CERT_FILE="$REGISTRY_CA_FILE" ZARF_INIT_REGISTRY_PUSH_PASSWORD="$(kubectl -n "$REGISTRY_WRITER_SECRET_NAMESPACE" get secret "$REGISTRY_WRITER_SECRET_NAME" -o "jsonpath={.data.$REGISTRY_WRITER_SECRET_KEY}" | base64 --decode)" zarf package mirror-resources ./zarf-package-coder-workspaces-amd64-*.tar.zst --registry-url "$REGISTRY_URL" --registry-push-username "$REGISTRY_PUSH_USERNAME" --components=workspace-source --images --no-img-checksum --confirm
-
-# Mirror runtime images before mirroring the Flux workspace source.
-mirror-all:
-    SSL_CERT_FILE="$REGISTRY_CA_FILE" ZARF_INIT_REGISTRY_PUSH_PASSWORD="$(kubectl -n "$REGISTRY_WRITER_SECRET_NAMESPACE" get secret "$REGISTRY_WRITER_SECRET_NAME" -o "jsonpath={.data.$REGISTRY_WRITER_SECRET_KEY}" | base64 --decode)" zarf package mirror-resources ./zarf-package-coder-workspaces-images-amd64-*.tar.zst --registry-url "$REGISTRY_URL" --registry-push-username "$REGISTRY_PUSH_USERNAME" --components=workspace-runtime,workspace-tooling,publisher-runtime --images --no-img-checksum --confirm
-    just mirror
+# Create a one-hour token for template publication.
+create-publisher-token:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    printf 'Coder password for %s: ' "$CODER_EMAIL" >&2
+    IFS= read -rs password
+    printf '\n' >&2
+    session_token="$(
+      jq -nc --arg email "$CODER_EMAIL" --arg password "$password" \
+        '{email: $email, password: $password}' |
+        curl -fsS "$CODER_URL/api/v2/users/login" \
+          -H 'Content-Type: application/json' --data-binary @- |
+        jq -r .session_token
+    )"
+    CODER_SESSION_TOKEN="$session_token" coder tokens create \
+      --name "template-publisher-$(date -u +%Y%m%d%H%M%S)" --lifetime 1h

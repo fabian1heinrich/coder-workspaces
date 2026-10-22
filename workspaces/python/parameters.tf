@@ -5,12 +5,12 @@ data "coder_parameter" "project" {
     ["Choose a project:"],
     [for project_name in local.project_order : "- **${project_name}** — ${local.projects[project_name].description}"],
   ))
-  type         = "string"
-  form_type    = "dropdown"
-  default      = "sandbox"
-  order        = 1
-  mutable      = false
-  icon         = "/icon/python.svg"
+  type      = "string"
+  form_type = "dropdown"
+  default   = "sandbox"
+  order     = 1
+  mutable   = false
+  icon      = "/icon/python.svg"
 
   dynamic "option" {
     for_each = local.project_order
@@ -25,11 +25,11 @@ data "coder_parameter" "project" {
 }
 
 data "coder_parameter" "repository" {
-  count = data.coder_parameter.project.value == "sandbox" ? 1 : 0
+  count = data.coder_parameter.project.value == "sandbox" && var.git_base_url != "" ? 1 : 0
 
   name         = "repository"
-  display_name = "Mirrored repository"
-  description  = "Owner/repository path in the internal Zarf Gitea service. Leave empty to start without cloning a repository."
+  display_name = "Repository"
+  description  = "Owner/repository path in the configured Git service. Leave empty to start without cloning a repository."
   type         = "string"
   default      = var.default_repository
   order        = 2
@@ -47,7 +47,7 @@ data "coder_parameter" "git_branch" {
 
   name         = "git_branch"
   display_name = "Source revision"
-  description  = "Branch or immutable revision to clone from the mirrored repository."
+  description  = "Branch or revision to clone from the repository."
   type         = "string"
   default      = var.default_git_branch
   order        = 3
@@ -64,24 +64,53 @@ data "coder_parameter" "workspace_image" {
   count = data.coder_parameter.project.value == "sandbox" ? 1 : 0
 
   name         = "workspace_image"
-  display_name = "Workspace Image"
-  description  = "Choose an approved environment image for the sandbox."
+  display_name = "Workspace image"
+  description  = "Registry-relative workspace image reference. ${local.image_registry}/ is prefixed automatically."
   type         = "string"
-  form_type    = "dropdown"
-  default      = "python-3.13"
+  default      = local.default_workspace_image_reference
   order        = 4
   mutable      = true
   icon         = "/icon/python.svg"
 
-  dynamic "option" {
-    for_each = local.workspace_image_order
+  validation {
+    regex = "^[a-z0-9][a-z0-9._/-]*(:[A-Za-z0-9_][A-Za-z0-9._-]*)?@sha256:[0-9a-f]{64}$"
+    error = "Use a registry-relative image reference pinned with @sha256:<64 lowercase hex characters>."
+  }
+}
 
-    content {
-      name        = option.value
-      description = local.workspace_images[option.value].description
-      value       = option.value
-      icon        = "/icon/python.svg"
-    }
+data "coder_parameter" "code_server_image" {
+  count = data.coder_parameter.project.value == "sandbox" ? 1 : 0
+
+  name         = "code_server_image"
+  display_name = "code-server image"
+  description  = "Registry-relative code-server image-volume reference. ${local.image_registry}/ is prefixed automatically."
+  type         = "string"
+  default      = local.default_code_server_reference
+  order        = 5
+  mutable      = true
+  icon         = "/icon/code.svg"
+
+  validation {
+    regex = "^[a-z0-9][a-z0-9._/-]*(:[A-Za-z0-9_][A-Za-z0-9._-]*)?@sha256:[0-9a-f]{64}$"
+    error = "Use a registry-relative image reference pinned with @sha256:<64 lowercase hex characters>."
+  }
+}
+
+data "coder_parameter" "vsix_image" {
+  count = data.coder_parameter.project.value == "sandbox" ? 1 : 0
+
+  name         = "vsix_image"
+  display_name = "Extensions image"
+  description  = "Registry-relative VSIX image-volume reference. ${local.image_registry}/ is prefixed automatically."
+  type         = "string"
+  default      = local.default_vsix_reference
+  order        = 6
+  mutable      = true
+  icon         = "/icon/extensions.svg"
+
+  validation {
+    regex = "^[a-z0-9][a-z0-9._/-]*(:[A-Za-z0-9_][A-Za-z0-9._-]*)?@sha256:[0-9a-f]{64}$"
+    error = "Use a registry-relative image reference pinned with @sha256:<64 lowercase hex characters>."
   }
 }
 
@@ -94,7 +123,7 @@ data "coder_parameter" "cpu" {
   type         = "number"
   form_type    = "slider"
   default      = local.workspace_size.cpu
-  order        = 7
+  order        = 9
   mutable      = true
   icon         = "/icon/memory.svg"
 
@@ -113,7 +142,7 @@ data "coder_parameter" "memory" {
   type         = "number"
   form_type    = "slider"
   default      = local.workspace_size.memory
-  order        = 8
+  order        = 10
   mutable      = true
   icon         = "/icon/memory.svg"
 
@@ -124,15 +153,13 @@ data "coder_parameter" "memory" {
 }
 
 data "coder_parameter" "home_disk_size" {
-  count = data.coder_parameter.customize_specs.value ? 1 : 0
-
   name         = "home_disk_size"
   display_name = "Persistent home disk (GiB)"
-  description  = "Size of the persistent /home/coder directory."
+  description  = "Size of the persistent /home/coder directory. It can be increased when the StorageClass supports expansion, but cannot be reduced."
   type         = "number"
   form_type    = "slider"
   default      = local.default_home_disk_size
-  order        = 9
+  order        = 11
   mutable      = true
   icon         = "/emojis/1f4be.png"
 
@@ -152,7 +179,7 @@ data "coder_parameter" "enable_dotfiles" {
   type         = "bool"
   form_type    = "switch"
   default      = local.default_enable_dotfiles
-  order        = 10
+  order        = 12
   mutable      = true
   icon         = "/icon/dotfiles.svg"
 }
@@ -164,7 +191,7 @@ data "coder_parameter" "workspace_size" {
   type         = "string"
   form_type    = "dropdown"
   default      = local.project.recommended_size
-  order        = 5
+  order        = 7
   mutable      = true
   icon         = "/icon/memory.svg"
 
@@ -183,11 +210,11 @@ data "coder_parameter" "workspace_size" {
 data "coder_parameter" "customize_specs" {
   name         = "customize_specs"
   display_name = "Customize specifications"
-  description  = "Override the selected workspace size and defaults for CPU, memory, persistent home storage, and dotfiles."
+  description  = "Override the selected workspace size with custom CPU and memory values, and change the dotfiles default."
   type         = "bool"
   form_type    = "switch"
   default      = false
-  order        = 6
+  order        = 8
   mutable      = true
   icon         = "/icon/memory.svg"
 }

@@ -4,26 +4,14 @@ namespace: coder-template-publisher
 
 resources:
   - namespace.yaml
-  - ../../template-publisher
+  - ../../template-publisher/base
   - ../../workspaces/k8s-dev
   - ../../workspaces/python
 
+configMapGenerator:
+  - name: template-publisher-environment
+    envs:
+      - publisher.env
+
 patches:
-  - path: job-overlay.yaml
-  - target:
-      group: batch
-      version: v1
-      kind: Job
-      name: template-publisher
-    patch: |-
-      - op: remove
-        path: /spec/template/spec/imagePullSecrets
-  - target:
-      group: networking.k8s.io
-      version: v1
-      kind: NetworkPolicy
-      name: template-publisher-egress
-    patch: |-
-      - op: replace
-        path: /spec/egress/1/to/0/namespaceSelector/matchLabels/kubernetes.io~1metadata.name
-        value: coder
+  - path: job-patch.yaml

@@ -1,37 +1,44 @@
 # Python workspace
 
 An air-gapped Python 3.13 development environment with code-server, approved
-extensions, persistent user state, and access to repositories mirrored by
-Zarf.
+extensions, persistent user state, and optional access to a deployment-owned
+Git service.
 
-Independently versioned images provide locked uv environments for
-`dupe-trooper` and `deja-doc`; see [`images/README.md`](images/README.md).
-They contain no application source.
+Projects are declared once in `projects.json`, which this template carries and
+the build and CI read. Each entry has an independently versioned image with a
+locked uv environment; see [`images/README.md`](images/README.md). They contain
+no application source.
 
-The immutable **Project** selector always offers `sandbox` and adds `deja-doc`
-and `dupe-trooper` when their digest-pinned images are supplied. Managed
-projects set the repository, source revision, image, and recommended size as
-one consistent profile. Selecting `sandbox` instead reveals the mirrored
-repository, source revision, and approved workspace image controls.
+The immutable **Project** selector always offers `sandbox` and adds an entry
+for every catalog project whose digest-pinned image the deployment supplies
+through `project_images`, so enabling a project is a packaging decision rather
+than a template change. A project sets the repository, source revision, image,
+and recommended size as one consistent profile. Selecting `sandbox` lets the
+user set the workspace, code-server, and VSIX payload images and, when a Git
+service is configured, reveals repository and source revision controls. Image
+references are paths within the deployment-owned registry: the template
+prepends the registry from its default workspace image and requires every
+selection to be digest-pinned. Custom images must implement the same runtime
+and mounted-payload layouts as the repository-owned defaults.
+
+To add a project: add its entry to `projects.json`, add `pyproject.toml` and
+`uv.lock` under `images/<name>/`, and add its image to the transport package
+lists and publisher environment. The build, the CI matrix, and the template
+follow from the catalog.
 
 ## Using the workspace
 
-- Choose `sandbox`, `deja-doc`, or `dupe-trooper` as the project. `sandbox`
-  allows any repository already available from the internal mirror and any
-  approved image. The managed projects use their locked dependency image.
+- Choose `sandbox` or one of the offered projects. `sandbox` can clone from the
+  configured Git service; a project uses its own locked dependency image.
 - Choose a Small, Standard, or Large workspace size. Enable **Customize
-  specifications** to set CPU, memory, persistent home storage, and dotfiles
-  independently.
+  specifications** to set CPU, memory, and dotfiles independently. The
+  persistent home disk is an independent, increase-only setting.
 - code-server, the web terminal, and SSH start in the selected repository, or
   `/home/coder` when none is selected.
 
-The packaged repository is cloned from the internal Gitea mirror. Its `origin`
-is pull-only. Add a separate internal development remote before pushing:
-
-```shell
-git remote add development <internal-git-url>
-git push --set-upstream development <branch>
-```
+The published `git_auth_mode` selects anonymous access, a generic Kubernetes
+Secret, or Coder external auth. No option is tied to a particular Git service
+or deployment tool.
 
 ## Persistence and offline behavior
 
