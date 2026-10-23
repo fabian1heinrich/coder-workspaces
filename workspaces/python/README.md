@@ -10,21 +10,22 @@ locked uv environment; see [`images/README.md`](images/README.md). They contain
 no application source.
 
 The immutable **Project** selector always offers `sandbox` and adds an entry
-for every catalog project whose digest-pinned image the deployment supplies
-through `project_images`, so enabling a project is a packaging decision rather
-than a template change. A project sets the repository, source revision, image,
-and recommended size as one consistent profile. Selecting `sandbox` lets the
-user set the workspace, code-server, and VSIX payload images and, when a Git
-service is configured, reveals repository and source revision controls. Image
+for every catalog project whose per-project digest-pinned image variable the
+deployment supplies. Each project has its own image and repository variables,
+so it preselects the repository, source revision, image, and recommended size
+as one consistent profile. When a Git service is configured, every project
+reveals editable repository and source revision controls with the profile
+values prefilled. Selecting `sandbox` additionally lets the user set the
+workspace, code-server, and VSIX payload images. Image
 references are paths within the deployment-owned registry: the template
 prepends the registry from its default workspace image and requires every
 selection to be digest-pinned. Custom images must implement the same runtime
 and mounted-payload layouts as the repository-owned defaults.
 
 To add a project: add its entry to `projects.json`, add `pyproject.toml` and
-`uv.lock` under `images/<name>/`, and add its image to the transport package
-lists and publisher environment. The build, the CI matrix, and the template
-follow from the catalog.
+`uv.lock` under `images/<name>/`, add its image and repository variables to the
+template and publisher environment, and add its image to the transport package
+lists. The build and CI matrix follow from the catalog.
 
 ## Using the workspace
 

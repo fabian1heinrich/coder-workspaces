@@ -1,9 +1,9 @@
 kind: ZarfPackageConfig
 
 metadata:
-  name: coder-local
+  name: coder-workspaces-dev-local
   version: 0.1.0
-  description: Locally built Coder platform and optional workspace-template release
+  description: Locally built Coder platform and workspace-template release
   architecture: amd64
 
 constants:
@@ -53,28 +53,35 @@ components:
 
   - name: cnpg
     required: true
+    only:
+      flavor: full
     import:
       path: ..
 
   - name: postgres-connection
     required: true
+    only:
+      flavor: full
     import:
       path: ..
 
   - name: coder
     required: true
+    only:
+      flavor: full
     import:
       path: ..
 
   - name: coder-bootstrap
     required: true
+    only:
+      flavor: full
     import:
       path: ..
 
   - name: template-artifacts
     description: Transport the locally built template runner and workspace images
-    required: false
-    default: true
+    required: true
     imageArchives:
       - path: "###ZARF_PKG_TMPL_BUILD_DIR###/publisher.oci.tar"
         images:
@@ -105,7 +112,6 @@ components:
       - https://github.com/fabian1heinrich/coder-dotfiles.git@4d8bd9bf877c32e257f671ab30c86e898261891e
 
   - name: publish-template
-    required: false
-    default: true
+    required: true
     import:
       path: ..

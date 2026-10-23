@@ -24,15 +24,15 @@ _build-and-save containerfile image archive target="" project="" timestamp="":
 build-template-artifacts:
     #!/usr/bin/env bash
     set -euo pipefail
-    just _build-and-save publisher.Containerfile zarf.internal/coder-workspaces-publisher:local publisher.oci.tar
-    just _build-and-save workspaces/python/images/code-server.Containerfile zarf.internal/coder-workspaces-code-server:local code-server.oci.tar
-    just _build-and-save workspaces/python/extensions/python-extensions.Containerfile zarf.internal/coder-workspaces-python-vsix:local python-vsix.oci.tar
-    just _build-and-save workspaces/python/images/python.Containerfile zarf.internal/coder-workspaces-python-workspace:local python-workspace.oci.tar runtime
-    just _build-and-save workspaces/k8s-dev/image/Containerfile zarf.internal/coder-workspaces-k8s-workspace:local k8s-workspace.oci.tar
-    just _build-and-save workspaces/k8s-dev/extensions/k8s-extensions.Containerfile zarf.internal/coder-workspaces-k8s-vsix:local k8s-vsix.oci.tar
+    build_image() { just _build-and-save "$1" "zarf.internal/coder-workspaces-$2:local" "$2.oci.tar" "${@:3}"; }
+    build_image publisher.Containerfile publisher
+    build_image workspaces/python/images/code-server.Containerfile code-server
+    build_image workspaces/python/extensions/python-extensions.Containerfile python-vsix
+    build_image workspaces/python/images/python.Containerfile python-workspace runtime
+    build_image workspaces/k8s-dev/image/Containerfile k8s-workspace
+    build_image workspaces/k8s-dev/extensions/k8s-extensions.Containerfile k8s-vsix
     while IFS= read -r project; do
-      just _build-and-save workspaces/python/images/python.Containerfile \
-        "zarf.internal/coder-workspaces-${project}:local" "${project}.oci.tar" \
+      build_image workspaces/python/images/python.Containerfile "$project" \
         project "$project" 315532800
     done < <(jq -r '.[].name' workspaces/python/projects.json)
 
@@ -45,48 +45,61 @@ build-platform-artifacts:
 build-all: build-platform-artifacts build-template-artifacts
 
 # Package the published images and full local platform.
-package-registry:
+package-dev-registry:
     zarf package create dev --flavor full --confirm --output .
+    mv -- zarf-package-coder-workspaces-dev-registry-amd64-0.1.0-full.tar.zst zarf-package-coder-dev-registry-platform-amd64-0.1.0-full.tar.zst
 
 # Package only the published template artifacts.
-package-registry-templates:
+package-dev-registry-templates:
     zarf package create dev --confirm --output .
+    mv -- zarf-package-coder-workspaces-dev-registry-amd64-0.1.0.tar.zst zarf-package-coder-dev-registry-template-publisher-amd64-0.1.0.tar.zst
 
-# Build and package the full local platform.
-package-local: build-all (_package-local "full")
+# Build and package the complete local development platform.
+package-dev-local: build-all (_package-dev-local "full")
 
-# Build and package only the local template artifacts.
-package-local-templates: build-template-artifacts (_package-local "")
+# Build and package only the local development template artifacts.
+package-dev-local-templates: build-template-artifacts (_package-dev-local "")
 
 [private]
-_package-local flavor:
+_package-dev-local flavor:
     #!/usr/bin/env bash
     set -eo pipefail
     flavor={{ quote(flavor) }}
     digest() { skopeo inspect "oci-archive:$BUILD_DIR/$1.oci.tar" | jq -r .Digest; }
     args=(--set "BUILD_DIR=$BUILD_DIR")
+    suffix=
+    artifact=template-publisher
     if test -n "$flavor"; then
       coder_digest="$(digest coder-opentofu)"
       args=(--flavor "$flavor" "${args[@]}" \
         --set "CODER_IMAGE_DIGEST=${coder_digest#sha256:}" \
         --set "CODER_MODULES_IMAGE=zarf.internal/coder-modules@$(digest coder-modules)")
+      suffix=-full
+      artifact=platform
     else
       args+=(--set CODER_IMAGE_DIGEST= --set CODER_MODULES_IMAGE=)
     fi
-    args+=(
-      --set "PUBLISHER_IMAGE=zarf.internal/coder-workspaces-publisher@$(digest publisher)"
-      --set "CODE_SERVER_IMAGE=zarf.internal/coder-workspaces-code-server@$(digest code-server)"
-      --set "WORKSPACE_IMAGE=zarf.internal/coder-workspaces-python-workspace@$(digest python-workspace)"
-      --set "K8S_WORKSPACE_IMAGE=zarf.internal/coder-workspaces-k8s-workspace@$(digest k8s-workspace)"
-      --set "K8S_VSIX_IMAGE=zarf.internal/coder-workspaces-k8s-vsix@$(digest k8s-vsix)"
-      --set "VSIX_IMAGE=zarf.internal/coder-workspaces-python-vsix@$(digest python-vsix)"
-      --set "DEJA_DOC_IMAGE=zarf.internal/coder-workspaces-deja-doc@$(digest deja-doc)"
-      --set "DUPE_TROOPER_IMAGE=zarf.internal/coder-workspaces-dupe-trooper@$(digest dupe-trooper)"
-    )
+    image() { args+=(--set "$1=zarf.internal/coder-workspaces-$2@$(digest "$2")"); }
+    image PUBLISHER_IMAGE publisher
+    image CODE_SERVER_IMAGE code-server
+    image WORKSPACE_IMAGE python-workspace
+    image K8S_WORKSPACE_IMAGE k8s-workspace
+    image K8S_VSIX_IMAGE k8s-vsix
+    image VSIX_IMAGE python-vsix
+    image DEJA_DOC_IMAGE deja-doc
+    image DUPE_TROOPER_IMAGE dupe-trooper
     zarf package create dev/local "${args[@]}" --confirm --output .
+    mv -- "zarf-package-coder-workspaces-dev-local-amd64-0.1.0${suffix}.tar.zst" \
+      "zarf-package-coder-dev-local-${artifact}-amd64-0.1.0${suffix}.tar.zst"
 
-# Build production template publication media.
-build-release:
+# Package production template publication and image-mirror media.
+package-release: (_package-release "all")
+
+# Package only the production template publication media.
+package-release-templates: (_package-release "templates")
+
+[private]
+_package-release mode:
     #!/usr/bin/env -S direnv exec . bash
     set -eo pipefail
     revision="$(git rev-parse HEAD)"
@@ -98,22 +111,17 @@ build-release:
     mkdir -p "$bundle"
     zarf package create release/publish --architecture amd64 --output "$root" \
       --set RELEASE_ID="$release" --confirm
-    cp "$root/zarf-package-coder-workspaces-publish-amd64-${release}.tar.zst" "$bundle/"
+    cp "$root/zarf-package-coder-workspaces-publish-amd64-${release}.tar.zst" \
+      "$bundle/zarf-package-coder-workspaces-template-publisher-amd64-${release}.tar.zst"
     printf 'release_id=%s\ngit_revision=%s\n' "$release" "$revision" > "$bundle/RELEASE-METADATA"
     cp -R release/airgapped/. "$bundle/"
-    (cd "$bundle" && find . -type f ! -name SHA256SUMS -exec sha256sum {} + | sort -k2 > SHA256SUMS)
-
-# Build publication and image mirror media.
-build-release-all: build-release
-    #!/usr/bin/env -S direnv exec . bash
-    set -eo pipefail
-    root="$(git rev-parse --show-toplevel)"
-    bundle="$BUILD_DIR/coder-workspaces"
-    release="$(sed -n 's/^release_id=//p' "$bundle/RELEASE-METADATA")"
-    zarf package create release/images --architecture amd64 \
-      --registry-override registry.invalid=ghcr.io --output "$root" \
-      --set RELEASE_ID="$release" --confirm
-    cp "$root/zarf-package-coder-workspaces-images-amd64-${release}.tar.zst" "$bundle/"
+    if test {{ quote(mode) }} = all; then
+      zarf package create release/images --architecture amd64 \
+        --registry-override registry.invalid=ghcr.io --output "$root" \
+        --set RELEASE_ID="$release" --confirm
+      cp "$root/zarf-package-coder-workspaces-images-amd64-${release}.tar.zst" \
+        "$bundle/zarf-package-coder-workspaces-image-mirror-amd64-${release}.tar.zst"
+    fi
     (cd "$bundle" && find . -type f ! -name SHA256SUMS -exec sha256sum {} + | sort -k2 > SHA256SUMS)
 
 # Create the local kind cluster.

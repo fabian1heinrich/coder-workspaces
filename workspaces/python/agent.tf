@@ -1,7 +1,6 @@
 resource "coder_agent" "main" {
   os   = "linux"
   arch = "amd64"
-  dir  = local.workspace_folder
 
   display_apps {
     vscode                 = false

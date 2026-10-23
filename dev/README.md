@@ -47,8 +47,8 @@ home directory.
 ## Published-image deployment
 
 ```sh
-just package-registry
-zarf package deploy zarf-package-coder-registry-amd64-0.1.0-full.tar.zst --confirm
+just package-dev-registry
+zarf package deploy zarf-package-coder-dev-registry-platform-amd64-0.1.0-full.tar.zst --confirm
 ```
 
 The package definition records every published image by immutable digest.
@@ -56,8 +56,8 @@ The package definition records every published image by immutable digest.
 ## Locally built deployment
 
 ```sh
-just package-local
-zarf package deploy zarf-package-coder-local-amd64-0.1.0-full.tar.zst --confirm
+just package-dev-local
+zarf package deploy zarf-package-coder-dev-local-platform-amd64-0.1.0-full.tar.zst --confirm
 ```
 
 This builds and packages OCI archives for every repository-owned image.
@@ -68,15 +68,15 @@ On an existing platform, publish both templates and update every outdated
 workspace:
 
 ```sh
-just package-registry-templates
-zarf package deploy zarf-package-coder-registry-amd64-0.1.0.tar.zst --confirm
+just package-dev-registry-templates
+zarf package deploy zarf-package-coder-dev-registry-template-publisher-amd64-0.1.0.tar.zst --confirm
 ```
 
 For the same iteration with locally built images:
 
 ```sh
-just package-local-templates
-zarf package deploy zarf-package-coder-local-amd64-0.1.0.tar.zst --confirm
+just package-dev-local-templates
+zarf package deploy zarf-package-coder-dev-local-template-publisher-amd64-0.1.0.tar.zst --confirm
 ```
 
 Template packages publish both templates through the existing publisher Job

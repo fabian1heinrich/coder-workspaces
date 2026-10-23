@@ -6,6 +6,7 @@
 # so unchanged input republishes nothing and no backend, lock, or imported
 # state is needed to decide that.
 set -euo pipefail
+umask 077
 
 coder="${CODER_CLI:-/opt/coder}"
 template_version=0.1.0
@@ -44,8 +45,10 @@ stage() {
 # leaves unset keeps the template's own default.
 template_variable_arguments=()
 collect_variables() {
-  local staged="$1" prefix="$2" name value environment_name
+  local staged="$1" prefix="$2" variables_file="$3"
+  local name value environment_name line
   template_variable_arguments=()
+  : >"${variables_file}"
   while IFS= read -r name; do
     environment_name="TF_VAR_${prefix}_${name}"
     if [[ -z "${!environment_name+set}" ]]; then
@@ -54,6 +57,12 @@ collect_variables() {
     if [[ -n "${!environment_name+set}" ]]; then
       value="${!environment_name}"
       template_variable_arguments+=("--variable" "${name}=${value}")
+      # Coder's string-array flag splits values on commas. Use its YAML
+      # variables file instead so structured string values remain intact.
+      printf '%s: |-\n' "${name}" >>"${variables_file}"
+      while IFS= read -r line || [[ -n "${line}" ]]; do
+        printf '  %s\n' "${line}" >>"${variables_file}"
+      done <<<"${value}"
     fi
   done < <(
     grep -hoE '^variable "[a-z0-9_]+"' "${staged}"/*.tf |
@@ -95,7 +104,8 @@ for entry in "${templates[@]}"; do
   IFS='|' read -r name prefix subdirectory icon description <<<"${entry}"
 
   staged="$(stage "${name}" "${subdirectory}")"
-  collect_variables "${staged}" "${prefix}"
+  variables_file="${work_dir}/.${name}-variables.yaml"
+  collect_variables "${staged}" "${prefix}" "${variables_file}"
   revision="$(content_revision "${staged}" "${template_variable_arguments[@]}")"
   version="${template_version}-${revision}${publish_id:+-${publish_id}}"
   published_templates+=("${name}")
@@ -121,16 +131,17 @@ for entry in "${templates[@]}"; do
   "${coder}" templates push "${name}" \
     --directory "${staged}" \
     --name "${version}" \
-    --icon "${icon}" \
     --activate \
     --yes \
-    "${template_variable_arguments[@]}"
-  # Only the description needs a separate call, and it is set at creation
-  # only: `templates edit` submits the full template metadata, so running it
-  # on every publication would overwrite the scheduling and access settings
-  # that the deployment owns.
+    --variables-file "${variables_file}"
+  # Creation metadata needs a separate call, and is set at creation only:
+  # `templates edit` submits the full template metadata, so running it on every
+  # publication would overwrite scheduling and access settings owned elsewhere.
   if [[ "${created}" = true ]]; then
-    "${coder}" templates edit "${name}" --description "${description}" --yes
+    "${coder}" templates edit "${name}" \
+      --description "${description}" \
+      --icon "${icon}" \
+      --yes
   fi
 done
 

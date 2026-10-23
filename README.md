@@ -44,7 +44,7 @@ registry-backed package or one built from this checkout.
 Forward the Coder service with
 `kubectl -n coder port-forward service/coder 8080:80`, then sign in at
 `http://localhost:8080` as `admin@coder.local`. The proof-of-concept password
-is `ChangeMe123_`; override `CODER_ADMIN_PASSWORD` for every non-ephemeral
+is `CoderZarf123?!`; override `CODER_ADMIN_PASSWORD` for every non-ephemeral
 deployment.
 
 The local package is a proof of concept without high availability, backups,

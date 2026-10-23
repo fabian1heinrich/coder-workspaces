@@ -1,18 +1,18 @@
 kind: ZarfPackageConfig
 
 metadata:
-  name: coder-registry
+  name: coder-workspaces-dev-registry
   version: 0.1.0
-  description: Registry-backed Coder platform and optional workspace-template release
+  description: Registry-backed Coder platform and workspace-template release
   architecture: amd64
 
 variables:
   - name: CODER_ADMIN_PASSWORD
     description: Password for the initial Coder administrator.
-    default: CoderPassword123?!
+    default: CoderZarf123?!
     prompt: false
     sensitive: true
-    pattern: "^[A-Za-z0-9._~-]{8,128}$"
+    pattern: "^[A-Za-z0-9._~!?-]{8,128}$"
   - name: CLUSTER_NAME
     default: coder-postgres
     prompt: false
@@ -30,8 +30,20 @@ variables:
     default: coder
     prompt: false
     sensitive: true
-  - name: DEFAULT_REPOSITORY
-    description: Mirrored workspace repository; empty starts workspaces without one.
+  - name: SANDBOX_REPOSITORY
+    description: Mirrored repository prefilled for the Python sandbox project.
+    default: zarf-git-user/uv-devcontainer-322178071
+    prompt: false
+  - name: DEJA_DOC_REPOSITORY
+    description: Mirrored repository prefilled for the deja-doc project.
+    default: zarf-git-user/uv-devcontainer-322178071
+    prompt: false
+  - name: DUPE_TROOPER_REPOSITORY
+    description: Mirrored repository prefilled for the dupe-trooper project.
+    default: zarf-git-user/uv-devcontainer-322178071
+    prompt: false
+  - name: K8S_DEV_REPOSITORY
+    description: Mirrored repository prefilled for the k8s-dev template.
     default: zarf-git-user/uv-devcontainer-322178071
     prompt: false
   - name: DEFAULT_DOTFILES_REPOSITORY
@@ -137,7 +149,12 @@ components:
               set -eu
               coder_url=http://coder.coder.svc.cluster.local
               ./zarf tools kubectl -n coder rollout status deployment/coder --timeout=2m
-              ./zarf tools kubectl create namespace coder-template-publisher
+              ./zarf tools kubectl get namespace coder-template-publisher >/dev/null 2>&1 ||
+                ./zarf tools kubectl create namespace coder-template-publisher
+              if ./zarf tools kubectl -n coder-template-publisher \
+                get secret coder-template-publisher-auth >/dev/null 2>&1; then
+                exit 0
+              fi
               publisher_token="$(
                 printf '%s\n' "${ZARF_VAR_CODER_ADMIN_PASSWORD}" |
                   ./zarf tools kubectl -n coder exec -i deploy/coder -- env \
@@ -166,8 +183,7 @@ components:
   # entry point.
   - name: template-artifacts
     description: Transport the 0.1.0 workspace images, template runner, and Git repositories
-    required: false
-    default: true
+    required: true
     images:
       - ghcr.io/fabian1heinrich/coder-workspaces/publisher@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916
       - ghcr.io/fabian1heinrich/coder-workspaces/code-server@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8
@@ -183,8 +199,7 @@ components:
 
   - name: publish-template
     description: Publish the Coder workspace templates using artifacts already loaded into Zarf
-    required: false
-    default: true
+    required: true
     actions:
       onDeploy:
         before:

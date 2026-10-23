@@ -30,7 +30,7 @@ deployment command:
 
 ```sh
 ZARF_VAR_CODER_TOKEN="$(just create-publisher-token)" \
-zarf package deploy ./zarf-package-coder-workspaces-publish-amd64-*.tar.zst \
+zarf package deploy ./zarf-package-coder-workspaces-template-publisher-amd64-*.tar.zst \
   --connected \
   --confirm
 ```
@@ -45,7 +45,7 @@ ZARF_INIT_REGISTRY_PUSH_PASSWORD="$(
     -o "jsonpath={.data.$REGISTRY_WRITER_SECRET_KEY}" | base64 --decode
 )" \
 zarf package mirror-resources \
-  ./zarf-package-coder-workspaces-images-amd64-*.tar.zst \
+  ./zarf-package-coder-workspaces-image-mirror-amd64-*.tar.zst \
   --registry-url "$ZARF_VAR_REGISTRY" \
   --registry-push-username "$REGISTRY_PUSH_USERNAME" \
   --components=workspace-runtime,coder-modules,workspace-tooling,publisher-runtime \

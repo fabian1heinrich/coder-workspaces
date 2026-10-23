@@ -25,13 +25,13 @@ data "coder_parameter" "project" {
 }
 
 data "coder_parameter" "repository" {
-  count = data.coder_parameter.project.value == "sandbox" && var.git_base_url != "" ? 1 : 0
+  count = var.git_base_url != "" ? 1 : 0
 
   name         = "repository"
   display_name = "Repository"
   description  = "Owner/repository path in the configured Git service. Leave empty to start without cloning a repository."
   type         = "string"
-  default      = var.default_repository
+  default      = local.project.repository
   order        = 2
   mutable      = false
   icon         = "/icon/git.svg"

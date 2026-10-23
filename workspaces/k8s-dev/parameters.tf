@@ -5,7 +5,7 @@ data "coder_parameter" "repository" {
   display_name = "Repository"
   description  = "Owner/repository path in the configured Git service. Leave empty to start without cloning a repository."
   type         = "string"
-  default      = var.default_repository
+  default      = var.repository
   order        = 1
   mutable      = false
   icon         = "/icon/git.svg"

@@ -15,7 +15,7 @@ module "workspace" {
   home_storage_class = var.home_storage_class
   home_storage_size  = local.home_storage_size
 
-  workspace_image        = var.workspace_image
+  workspace_image        = var.image
   code_server_image      = var.code_server_image
   vsix_image             = var.vsix_image
   image_pull_secret_name = var.image_pull_secret_name

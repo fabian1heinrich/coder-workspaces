@@ -5,35 +5,40 @@ locals {
   # Sandbox users choose registry-relative image references. Keep the registry
   # itself deployment-owned and derive the editable defaults from the images
   # supplied when the template is published.
-  image_registry                    = split("/", var.workspace_image)[0]
-  workspace_image_parts             = split("/", var.workspace_image)
+  image_registry                    = split("/", var.sandbox_image)[0]
+  workspace_image_parts             = split("/", var.sandbox_image)
   code_server_image_parts           = split("/", var.code_server_image)
   vsix_image_parts                  = split("/", var.vsix_image)
-  default_workspace_image_reference = length(local.workspace_image_parts) > 1 ? join("/", slice(local.workspace_image_parts, 1, length(local.workspace_image_parts))) : var.workspace_image
+  default_workspace_image_reference = length(local.workspace_image_parts) > 1 ? join("/", slice(local.workspace_image_parts, 1, length(local.workspace_image_parts))) : var.sandbox_image
   default_code_server_reference     = length(local.code_server_image_parts) > 1 ? join("/", slice(local.code_server_image_parts, 1, length(local.code_server_image_parts))) : var.code_server_image
   default_vsix_reference            = length(local.vsix_image_parts) > 1 ? join("/", slice(local.vsix_image_parts, 1, length(local.vsix_image_parts))) : var.vsix_image
 
   # Projects are declared once in projects.json, which this template carries
-  # and the build and CI read. A project becomes selectable only when the
-  # deployment supplies its digest-pinned image through project_images, so
-  # enabling one is a packaging decision, not a template change.
+  # and the build and CI read. Each project has its own deployment-supplied
+  # image and repository, and becomes selectable when its image is set.
   project_catalog = {
     for entry in jsondecode(file("${path.module}/projects.json")) : entry.name => entry
   }
 
-  project_images = var.project_images == "" ? {} : {
-    for pair in split(",", var.project_images) :
-    split("=", pair)[0] => split("=", pair)[1]
+  project_profiles = {
+    "deja-doc" = {
+      workspace_image = var.deja_doc_image
+      repository      = var.deja_doc_repository
+    }
+    "dupe-trooper" = {
+      workspace_image = var.dupe_trooper_image
+      repository      = var.dupe_trooper_repository
+    }
   }
 
   enabled_projects = {
-    for name, image in local.project_images : name => {
+    for name, profile in local.project_profiles : name => {
       description      = local.project_catalog[name].description
       recommended_size = local.project_catalog[name].recommended_size
-      workspace_image  = image
-      repository       = var.git_base_url == "" ? "" : var.default_repository
+      workspace_image  = profile.workspace_image
+      repository       = var.git_base_url == "" ? "" : profile.repository
       git_branch       = var.default_git_branch
-    }
+    } if profile.workspace_image != ""
   }
 
   projects = merge(
@@ -41,8 +46,8 @@ locals {
       sandbox = {
         description      = "Plain Python 3.13 environment for general development."
         recommended_size = "standard"
-        workspace_image  = var.workspace_image
-        repository       = var.git_base_url == "" ? "" : var.default_repository
+        workspace_image  = var.sandbox_image
+        repository       = var.git_base_url == "" ? "" : var.sandbox_repository
         git_branch       = var.default_git_branch
       }
     },
@@ -72,12 +77,12 @@ locals {
 
   project              = local.projects[data.coder_parameter.project.value]
   is_sandbox           = data.coder_parameter.project.value == "sandbox"
-  repository           = trim(local.is_sandbox ? try(data.coder_parameter.repository[0].value, "") : local.project.repository, "/")
+  repository           = trim(try(data.coder_parameter.repository[0].value, ""), "/")
   repository_parts     = local.repository == "" ? [] : split("/", local.repository)
   repository_name      = local.repository == "" ? "" : local.repository_parts[length(local.repository_parts) - 1]
   repository_url       = local.repository == "" ? "" : "${var.git_base_url}/${local.repository}.git"
   workspace_folder     = local.repository_name == "" ? "/home/coder" : "/home/coder/${local.repository_name}"
-  git_branch           = local.repository == "" ? "" : (local.is_sandbox ? try(data.coder_parameter.git_branch[0].value, "") : local.project.git_branch)
+  git_branch           = local.repository == "" ? "" : try(data.coder_parameter.git_branch[0].value, "")
   dotfiles_url         = var.git_base_url == "" || var.default_dotfiles_repository == "" ? "" : "${var.git_base_url}/${var.default_dotfiles_repository}.git"
   deployment_name      = "coder-${data.coder_workspace.me.id}"
   home_claim_name      = "coder-${data.coder_workspace.me.id}-home"

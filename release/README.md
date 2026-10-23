@@ -1,9 +1,9 @@
 # Production release
 
-Production uses two Zarf packages. `images/` is mirror-only and carries the
-publisher, workspace, module, code-server, and VSIX images. `publish/` is
-deployed, and publishes the workspace templates to an existing Coder
-deployment.
+Production uses two Zarf packages. `coder-workspaces-image-mirror` is
+mirror-only and carries the publisher, workspace, module, code-server, and
+VSIX images. `coder-workspaces-template-publisher` is deployed and publishes
+the workspace templates to an existing Coder deployment.
 
 The production cluster is not Zarf-initialized. It has its own registry, so
 the publication package is deployed with `zarf package deploy --connected`,
@@ -14,15 +14,15 @@ digests baked in at create time.
 
 `SHA256SUMS` records the contents of the release media.
 
-## Build release media
+## Package release media
 
-Run from the repository root with its direnv environment loaded. Build only the
+Run from the repository root with its direnv environment loaded. Package only the
 publication package for template changes, or include the image mirror package
 when an image reference changed:
 
 ```sh
-just build-release
-just build-release-all
+just package-release-templates
+just package-release
 ```
 
 The bundle is written to `$BUILD_DIR/coder-workspaces`. Copy that

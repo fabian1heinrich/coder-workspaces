@@ -17,10 +17,20 @@ variables:
   - name: REGISTRY
     description: Internal registry holding the mirrored workspace images.
     prompt: true
-  - name: PROJECT_IMAGES
-    description: >-
-      Selectable Python projects as catalog-name=image@sha256:<digest> pairs.
-      Empty offers only the plain Python environment.
+  - name: DEJA_DOC_IMAGE
+    description: Digest-pinned deja-doc workspace image; empty disables the project.
+    default: ""
+    prompt: false
+  - name: DEJA_DOC_REPOSITORY
+    description: Default owner/repository for the deja-doc project.
+    default: ""
+    prompt: false
+  - name: DUPE_TROOPER_IMAGE
+    description: Digest-pinned dupe-trooper workspace image; empty disables the project.
+    default: ""
+    prompt: false
+  - name: DUPE_TROOPER_REPOSITORY
+    description: Default owner/repository for the dupe-trooper project.
     default: ""
     prompt: false
   - name: HOME_STORAGE_CLASS
@@ -31,11 +41,11 @@ variables:
     description: Base URL of the Git service used by workspace repositories.
     default: ""
     prompt: false
-  - name: DEFAULT_REPOSITORY
-    description: Default owner/repository for the Python template.
+  - name: SANDBOX_REPOSITORY
+    description: Default owner/repository for the Python sandbox project.
     default: ""
     prompt: false
-  - name: K8S_DEFAULT_REPOSITORY
+  - name: K8S_DEV_REPOSITORY
     description: Default owner/repository for the k8s-dev template.
     default: ""
     prompt: false

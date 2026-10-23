@@ -9,13 +9,13 @@ variable "namespace" {
   }
 }
 
-variable "workspace_image" {
+variable "image" {
   type        = string
   description = "Repository-owned Kubernetes operations workspace image, pinned by sha256 digest."
 
   validation {
-    condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.workspace_image))
-    error_message = "workspace_image must be pinned with @sha256:<64 lowercase hex characters>."
+    condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.image))
+    error_message = "image must be pinned with @sha256:<64 lowercase hex characters>."
   }
 }
 
@@ -112,14 +112,14 @@ variable "platform_ca_config_map_name" {
   }
 }
 
-variable "default_repository" {
+variable "repository" {
   type        = string
   description = "Default owner/repository path in the configured Git service."
   default     = ""
 
   validation {
-    condition     = can(regex("^$|^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$", var.default_repository))
-    error_message = "default_repository must be empty or an owner/repository path."
+    condition     = can(regex("^$|^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$", var.repository))
+    error_message = "repository must be empty or an owner/repository path."
   }
 }
 

@@ -32,7 +32,7 @@ spec:
           image: publisher
           imagePullPolicy: IfNotPresent
           command:
-            - /usr/bin/bash
+            - /bin/bash
             - /source/publisher/publish.sh
           envFrom:
             - configMapRef:

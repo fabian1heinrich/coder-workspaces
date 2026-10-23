@@ -124,6 +124,8 @@ locals {
         name  = "GIT_CONFIG_VALUE_0"
         value = "!f() { [ \"$1\" != get ] || printf 'username=%s\\npassword=%s\\n' \"$WORKSPACE_GIT_USERNAME\" \"$WORKSPACE_GIT_PASSWORD\"; }; f"
       },
+    ] : [],
+    var.git_auth_mode == "secret" ? [
       {
         name = "WORKSPACE_GIT_USERNAME"
         valueFrom = {
@@ -225,7 +227,7 @@ resource "kubernetes_manifest" "workspace" {
         spec = {
           automountServiceAccountToken = false
           enableServiceLinks           = false
-          imagePullSecrets             = var.image_pull_secret_name == "" ? [] : [{ name = var.image_pull_secret_name }]
+          imagePullSecrets             = var.image_pull_secret_name == "" ? null : [{ name = var.image_pull_secret_name }]
           securityContext = {
             runAsUser           = 1000
             runAsGroup          = 1000

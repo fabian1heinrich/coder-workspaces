@@ -25,4 +25,4 @@ ENV HOME=/workspace/home
 
 WORKDIR /workspace
 USER 1000:1000
-ENTRYPOINT ["/usr/bin/bash"]
+ENTRYPOINT ["/bin/bash"]

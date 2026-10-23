@@ -4,28 +4,58 @@ variable "namespace" {
   default     = "coder"
 }
 
-variable "workspace_image" {
+variable "sandbox_image" {
   type        = string
   description = "Default Python sandbox runtime in the deployment-owned registry, pinned by sha256 digest."
   default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:0.1.0@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266"
 
   validation {
-    condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.workspace_image))
-    error_message = "workspace_image must be pinned with @sha256:<64 lowercase hex characters>."
+    condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.sandbox_image))
+    error_message = "sandbox_image must be pinned with @sha256:<64 lowercase hex characters>."
   }
 }
 
-variable "project_images" {
+variable "deja_doc_image" {
   type        = string
-  description = "Selectable project images as a comma-separated list of catalog-name=image@sha256:<digest> pairs. Empty offers only the plain Python environment."
+  description = "Optional deja-doc workspace image, pinned by sha256 digest. Empty disables the project."
   default     = ""
 
   validation {
-    condition = can(regex(
-      "^$|^[a-z0-9][a-z0-9-]*=[^[:space:],@]+@sha256:[0-9a-f]{64}(,[a-z0-9][a-z0-9-]*=[^[:space:],@]+@sha256:[0-9a-f]{64})*$",
-      var.project_images,
-    ))
-    error_message = "project_images must be empty or name=reference@sha256:<64 lowercase hex characters> pairs separated by commas."
+    condition     = var.deja_doc_image == "" || can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.deja_doc_image))
+    error_message = "deja_doc_image must be empty or pinned with @sha256:<64 lowercase hex characters>."
+  }
+}
+
+variable "deja_doc_repository" {
+  type        = string
+  description = "Default owner/repository path for the deja-doc project."
+  default     = ""
+
+  validation {
+    condition     = can(regex("^$|^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$", var.deja_doc_repository))
+    error_message = "deja_doc_repository must be empty or an owner/repository path."
+  }
+}
+
+variable "dupe_trooper_image" {
+  type        = string
+  description = "Optional dupe-trooper workspace image, pinned by sha256 digest. Empty disables the project."
+  default     = ""
+
+  validation {
+    condition     = var.dupe_trooper_image == "" || can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.dupe_trooper_image))
+    error_message = "dupe_trooper_image must be empty or pinned with @sha256:<64 lowercase hex characters>."
+  }
+}
+
+variable "dupe_trooper_repository" {
+  type        = string
+  description = "Default owner/repository path for the dupe-trooper project."
+  default     = ""
+
+  validation {
+    condition     = can(regex("^$|^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$", var.dupe_trooper_repository))
+    error_message = "dupe_trooper_repository must be empty or an owner/repository path."
   }
 }
 
@@ -113,14 +143,14 @@ variable "platform_ca_config_map_name" {
   default     = ""
 }
 
-variable "default_repository" {
+variable "sandbox_repository" {
   type        = string
-  description = "Default sandbox repository and repository assigned to the current managed project profiles."
+  description = "Default owner/repository path for the sandbox project."
   default     = ""
 
   validation {
-    condition     = can(regex("^$|^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$", var.default_repository))
-    error_message = "default_repository must be empty or an owner/repository path."
+    condition     = can(regex("^$|^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$", var.sandbox_repository))
+    error_message = "sandbox_repository must be empty or an owner/repository path."
   }
 }
 
