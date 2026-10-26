@@ -17,23 +17,18 @@ test -f "$KUBECONFIG"
 sha256sum --check SHA256SUMS
 ```
 
-Create the publishing token for the password-authenticated identity configured
-by `CODER_URL` and `CODER_EMAIL`. The recipe prompts for its password and writes
-only the new one-hour token to standard output:
+For a template-only release, publish with the password-authenticated identity
+configured by `CODER_URL` and `CODER_EMAIL`:
 
 ```sh
-just create-publisher-token
+just publish
 ```
 
-For a template-only release, create the token and expose it only to the Zarf
-deployment command:
-
-```sh
-ZARF_VAR_CODER_TOKEN="$(just create-publisher-token)" \
-zarf package deploy ./zarf-package-coder-workspaces-template-publisher-amd64-*.tar.zst \
-  --connected \
-  --confirm
-```
+The recipe prompts for the password, creates a uniquely named one-hour API
+token, passes it only to the connected Zarf deployment, then hard-deletes that
+token and logs out the password session on both success and failure. Set
+`PUBLISH_PACKAGE` only when the directory contains more than one publication
+package.
 
 When an image changed, mirror images before publishing:
 
@@ -54,13 +49,14 @@ zarf package mirror-resources \
   --confirm
 ```
 
-Then run the publication command above.
+Then run `just publish`.
 
-The publication package creates the credential Secret, runs the publisher Job
-as a Zarf health check, and deletes the Secret again on both the success and
-the failure path. A rejected token, an unreachable Coder deployment, or a
-template that fails to build therefore fails the deploy in front of you. Read
-the Job's output with:
+The publication package creates the credential Secret imperatively, outside
+its rendered manifests, runs the publisher Job as a Zarf health check, and
+deletes the Secret again on both the success and the failure path. The token is
+therefore absent from Helm release data. A rejected token, an unreachable Coder
+deployment, or a template that fails to build fails the deploy in front of you.
+Read the Job's output with:
 
 ```sh
 kubectl -n coder-template-publisher logs job/template-publisher

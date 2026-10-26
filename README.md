@@ -53,8 +53,8 @@ recovery, or monitoring.
 ## Production template publication
 
 Production mirrors digest-pinned images into the internal registry, then
-publishes the templates with `zarf package deploy --connected` against a
-cluster that was never Zarf-initialized. The publishing token is supplied for
-that one command and is never stored. The consuming platform owns credentials,
-registry access, namespaces, and environment configuration. See the
+publishes the templates with `zarf package deploy --connected` using the
+platform's existing registry without image rewriting. The publishing token is
+supplied for that one command and is never stored. The consuming platform owns
+credentials, registry access, namespaces, and environment configuration. See the
 [production release workflow](release/README.md).

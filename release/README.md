@@ -5,12 +5,11 @@ mirror-only and carries the publisher, workspace, module, code-server, and
 VSIX images. `coder-workspaces-template-publisher` is deployed and publishes
 the workspace templates to an existing Coder deployment.
 
-The production cluster is not Zarf-initialized. It has its own registry, so
-the publication package is deployed with `zarf package deploy --connected`,
-which applies the manifests as they are, without a Zarf registry, agent, or
-image mutation. Every image reference it applies is already a fully qualified
-reference to the internal registry, built from the `REGISTRY` variable and the
-digests baked in at create time.
+The production cluster uses its own registry for this independently released
+payload. The publication package is deployed with `zarf package deploy
+--connected`, which applies its fully qualified image references without
+importing or rewriting them. Each reference is built from the `REGISTRY`
+variable and the digests baked in at create time.
 
 `SHA256SUMS` records the contents of the release media.
 
@@ -34,10 +33,11 @@ that reference them.
 The publisher authenticates with a Coder API token supplied at deploy time as
 `ZARF_VAR_CODER_TOKEN`, never from a stored Secret. Create it with the Coder
 CLI immediately before publishing, for an identity that holds only the rights
-template publication needs. The package creates a Secret from it, runs the Job,
-and deletes the Secret again on both the success and the failure path, so no
-credential outlives the publication and none is ever written to this
-repository, the package, or the release media.
+template publication needs. The air-gapped `just publish` recipe owns creation
+and revocation. The package creates the Kubernetes Secret imperatively rather
+than rendering it into Helm release data, runs the Job, and deletes the Secret
+again on both the success and the failure path. No credential outlives the
+publication or enters this repository, package, or release media.
 
 A failed publication fails the deploy: the Job is a Zarf health check, so an
 expired or insufficient token surfaces immediately rather than in a controller

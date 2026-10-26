@@ -9,9 +9,10 @@ metadata:
 variables:
   - name: CODER_TOKEN
     description: >-
-      Coder API token for the publishing identity. Create it with the Coder CLI
-      immediately before publishing and export it as ZARF_VAR_CODER_TOKEN; it is
-      never stored in this package or the release media.
+      Coder API token for the publishing identity. The air-gapped publish recipe
+      creates it immediately before deployment, supplies it as
+      ZARF_VAR_CODER_TOKEN, and revokes it afterward; it is never stored in this
+      package or the release media.
     sensitive: true
     prompt: true
   - name: REGISTRY
@@ -35,6 +36,10 @@ variables:
     prompt: false
   - name: HOME_STORAGE_CLASS
     description: StorageClass for persistent workspace homes; empty uses the default.
+    default: ""
+    prompt: false
+  - name: PLATFORM_CA_CONFIG_MAP_NAME
+    description: ConfigMap in the workspace namespace containing platform-root-ca.pem; empty disables the mount.
     default: ""
     prompt: false
   - name: GIT_BASE_URL
@@ -70,10 +75,9 @@ constants:
   - name: VSIX_IMAGE
     value: "fabian1heinrich/coder-workspaces/python-vsix:0.1.0@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b"
 
-# The production cluster is not Zarf-initialized: it has its own registry and
-# needs no Zarf registry, agent, or image mutation, so this package is deployed
-# with `zarf package deploy --connected`. Every image reference it applies is
-# already a fully qualified reference to that registry.
+# The production cluster uses its own registry for these independently released
+# images. Deploy with `zarf package deploy --connected` so Zarf applies the
+# fully qualified image references without importing or rewriting them.
 components:
   - name: publish-templates
     description: Create the publisher credential and run the template publication Job
@@ -86,6 +90,15 @@ components:
               ./zarf tools kubectl -n coder-template-publisher \
                 delete job template-publisher --ignore-not-found --wait=true
             description: Remove a previous publication Job
+            mute: true
+          - cmd: |
+              set -eu
+              printf '%s' "${ZARF_VAR_CODER_TOKEN:?}" |
+                ./zarf tools kubectl -n coder-template-publisher create secret generic \
+                  coder-template-publisher-auth --from-file=token=/dev/stdin \
+                  --dry-run=client -o yaml |
+                ./zarf tools kubectl apply --server-side -f -
+            description: Create the short-lived publishing credential
             mute: true
         # The credential exists only for the duration of the publication, on
         # both the success and the failure path.

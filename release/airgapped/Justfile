@@ -1,16 +1,72 @@
-# Create a one-hour token for template publication.
-create-publisher-token:
+# Create a one-hour token, publish the templates, and revoke both credentials.
+publish:
     #!/usr/bin/env bash
     set -euo pipefail
+    : "${CODER_URL:?Set CODER_URL in .env}"
+    : "${CODER_EMAIL:?Set CODER_EMAIL in .env}"
+    coder_ca_file="${CODER_CA_FILE:-${REGISTRY_CA_FILE:-}}"
+    : "${coder_ca_file:?Set CODER_CA_FILE or REGISTRY_CA_FILE in .env}"
+    test -f "$coder_ca_file" || {
+      echo "Coder CA file does not exist: $coder_ca_file" >&2
+      exit 1
+    }
+    package="${PUBLISH_PACKAGE:-}"
+    if test -z "$package"; then
+      shopt -s nullglob
+      packages=(./zarf-package-coder-workspaces-template-publisher-amd64-*.tar.zst)
+      test "${#packages[@]}" -eq 1 || {
+        echo "Expected exactly one template-publisher package; set PUBLISH_PACKAGE explicitly." >&2
+        exit 1
+      }
+      package="${packages[0]}"
+    fi
+    test -f "$package" || {
+      echo "Publication package does not exist: $package" >&2
+      exit 1
+    }
+
+    session_token=
+    publisher_token=
+    token_name="template-publisher-$(date -u +%Y%m%d%H%M%S)"
+    cleanup() {
+      status=$?
+      cleanup_status=0
+      trap - EXIT INT TERM
+      if test -n "$publisher_token"; then
+        CODER_URL="$CODER_URL" CODER_CLIENT_TLS_CA_FILE="$coder_ca_file" \
+          CODER_SESSION_TOKEN="$session_token" \
+          coder tokens remove --delete "$token_name" >/dev/null || cleanup_status=1
+      fi
+      if test -n "$session_token"; then
+        printf 'header = "Coder-Session-Token: %s"\n' "$session_token" |
+          curl -fsS --cacert "$coder_ca_file" --config - -X POST \
+            "$CODER_URL/api/v2/users/logout" >/dev/null || cleanup_status=1
+      fi
+      unset password publisher_token session_token ZARF_VAR_CODER_TOKEN
+      if test "$status" -eq 0 && test "$cleanup_status" -ne 0; then
+        status=$cleanup_status
+      fi
+      exit "$status"
+    }
+    trap cleanup EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+
     printf 'Coder password for %s: ' "$CODER_EMAIL" >&2
     IFS= read -rs password
     printf '\n' >&2
     session_token="$(
-      jq -nc --arg email "$CODER_EMAIL" --arg password "$password" \
-        '{email: $email, password: $password}' |
-        curl -fsS "$CODER_URL/api/v2/users/login" \
+      CODER_LOGIN_EMAIL="$CODER_EMAIL" CODER_LOGIN_PASSWORD="$password" \
+        jq -nc '{email: env.CODER_LOGIN_EMAIL, password: env.CODER_LOGIN_PASSWORD}' |
+        curl -fsS --cacert "$coder_ca_file" "$CODER_URL/api/v2/users/login" \
           -H 'Content-Type: application/json' --data-binary @- |
-        jq -r .session_token
+        jq -er .session_token
     )"
-    CODER_SESSION_TOKEN="$session_token" coder tokens create \
-      --name "template-publisher-$(date -u +%Y%m%d%H%M%S)" --lifetime 1h
+    unset password
+    publisher_token="$(
+      CODER_URL="$CODER_URL" CODER_CLIENT_TLS_CA_FILE="$coder_ca_file" \
+        CODER_SESSION_TOKEN="$session_token" \
+        coder tokens create --name "$token_name" --lifetime 1h
+    )"
+    ZARF_VAR_CODER_TOKEN="$publisher_token" \
+      zarf package deploy "$package" --connected --confirm

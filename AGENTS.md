@@ -57,14 +57,15 @@ Keep these layers separate and independently versioned:
   template components from either published, digest-pinned OCI images or local
   OCI archives.
 - Production: `release/images/` is mirror-only; `release/publish/` is deployed
-  with `zarf package deploy --connected` against a cluster that is not
-  Zarf-initialized, and carries the publisher script, its Job and identity, and
-  the template payload. Do not reintroduce Flux objects, a Flux OCI source, or
-  `${}` substitution. Keep the fixed namespace, pull Secret, Git auth, and
-  branch contract in the templates and manifests; expose only
-  deployment-specific values as Zarf variables. The publishing token is
-  supplied as `ZARF_VAR_CODER_TOKEN`
-  for one deployment and deleted with its Secret afterwards; never store it.
+  with `zarf package deploy --connected` so independently mirrored image
+  references are not imported or rewritten, and carries the publisher script,
+  its Job and identity, and the template payload. Do not reintroduce Flux
+  objects, a Flux OCI source, or `${}` substitution. Keep the fixed namespace,
+  pull Secret, Git auth, and branch contract in the templates and manifests;
+  expose only deployment-specific values as Zarf variables. The publishing token is
+  supplied as `ZARF_VAR_CODER_TOKEN` for one deployment, created imperatively
+  as a Secret outside rendered release data, and deleted with the API token
+  afterwards; never store it.
   The consuming platform owns the registry, Git access, project images, the
   resources required by the fixed contract, and mounting the mirrored Coder
   modules image at

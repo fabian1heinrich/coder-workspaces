@@ -102,6 +102,10 @@ package-release-templates: (_package-release "templates")
 _package-release mode:
     #!/usr/bin/env -S direnv exec . bash
     set -eo pipefail
+    test -z "$(git status --porcelain)" || {
+      echo "Production releases must be built from a clean worktree." >&2
+      exit 1
+    }
     revision="$(git rev-parse HEAD)"
     date="$(git show -s --format=%cs HEAD)"
     release="${date//-/.}-g${revision:0:12}"

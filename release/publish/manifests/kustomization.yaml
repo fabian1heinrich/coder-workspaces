@@ -3,7 +3,6 @@ kind: Kustomization
 namespace: coder-template-publisher
 
 resources:
-  - credential.yaml
   - ../../../template-publisher/base
   - ../../../workspaces/k8s-dev
   - ../../../workspaces/python
