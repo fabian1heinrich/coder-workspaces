@@ -1,16 +1,12 @@
 kind: ZarfPackageConfig
 
 metadata:
-  name: coder-local
+  name: coder-workspaces-dev-local
   version: 0.1.0
-  description: Locally built Coder platform and optional workspace-template release
+  description: Locally built Coder platform and workspace-template release
   architecture: amd64
 
 constants:
-  - name: PUBLISH_TEMPLATE
-    value: all
-  - name: UPDATE_WORKSPACE
-    value: all
   - name: CODER_IMAGE_DIGEST
     value: "###ZARF_PKG_TMPL_CODER_IMAGE_DIGEST###"
   - name: CODER_IMAGE_REPOSITORY
@@ -27,10 +23,10 @@ constants:
     value: "###ZARF_PKG_TMPL_K8S_WORKSPACE_IMAGE###"
   - name: K8S_VSIX_IMAGE
     value: "###ZARF_PKG_TMPL_K8S_VSIX_IMAGE###"
-  - name: DUPE_TROOPER_IMAGE
-    value: "###ZARF_PKG_TMPL_DUPE_TROOPER_IMAGE###"
   - name: DEJA_DOC_IMAGE
     value: "###ZARF_PKG_TMPL_DEJA_DOC_IMAGE###"
+  - name: DUPE_TROOPER_IMAGE
+    value: "###ZARF_PKG_TMPL_DUPE_TROOPER_IMAGE###"
   - name: VSIX_IMAGE
     value: "###ZARF_PKG_TMPL_VSIX_IMAGE###"
 
@@ -57,32 +53,39 @@ components:
 
   - name: cnpg
     required: true
+    only:
+      flavor: full
     import:
       path: ..
 
   - name: postgres-connection
     required: true
+    only:
+      flavor: full
     import:
       path: ..
 
   - name: coder
     required: true
+    only:
+      flavor: full
     import:
       path: ..
 
   - name: coder-bootstrap
     required: true
+    only:
+      flavor: full
     import:
       path: ..
 
   - name: template-artifacts
     description: Transport the locally built template runner and workspace images
-    required: false
-    default: true
+    required: true
     imageArchives:
-      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/coderd-provider-opentofu.oci.tar"
+      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/publisher.oci.tar"
         images:
-          - zarf.internal/coder-workspaces-coderd-provider:opentofu
+          - zarf.internal/coder-workspaces-publisher:local
       - path: "###ZARF_PKG_TMPL_BUILD_DIR###/code-server.oci.tar"
         images:
           - zarf.internal/coder-workspaces-code-server:local
@@ -109,7 +112,6 @@ components:
       - https://github.com/fabian1heinrich/coder-dotfiles.git@4d8bd9bf877c32e257f671ab30c86e898261891e
 
   - name: publish-template
-    required: false
-    default: true
+    required: true
     import:
       path: ..

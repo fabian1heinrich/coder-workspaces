@@ -1,7 +1,6 @@
 resource "coder_agent" "main" {
   os   = "linux"
   arch = "amd64"
-  dir  = local.workspace_folder
 
   display_apps {
     vscode                 = false
@@ -83,7 +82,7 @@ resource "coder_metadata" "workspace" {
 }
 
 module "dotfiles" {
-  count  = local.enable_dotfiles && var.default_dotfiles_repository != "" ? 1 : 0
+  count  = local.enable_dotfiles && local.dotfiles_url != "" ? 1 : 0
   source = "/opt/coder-modules/dotfiles"
 
   agent_id        = coder_agent.main.id
@@ -125,9 +124,12 @@ module "code_server" {
   agent_id       = coder_agent.main.id
   folder         = local.workspace_folder
   offline        = true
-  install_prefix = "/opt/vscode-server"
+  install_prefix = "/opt/code-server"
   extensions_dir = "/home/coder/.local/share/code-server/extensions"
   settings = {
+    "extensions.autoCheckUpdates"              = false
+    "extensions.autoUpdate"                    = false
+    "telemetry.telemetryLevel"                 = "off"
     "terminal.integrated.defaultProfile.linux" = "zsh"
     "terminal.integrated.cwd"                  = local.workspace_folder
     "terminal.integrated.profiles.linux" = {

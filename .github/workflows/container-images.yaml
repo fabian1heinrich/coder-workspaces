@@ -51,58 +51,56 @@ jobs:
               sort -z
           )
 
+  plan:
+    name: Plan image matrix
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Derive the image matrix from the project catalog
+        id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='[
+            {"image": "coder", "file": "coder.Containerfile", "version": "2.36.0-airgap"},
+            {"image": "publisher", "file": "publisher.Containerfile", "version": "0.1.0"},
+            {"image": "coder-modules", "file": "modules/Containerfile", "version": "0.1.0"},
+            {"image": "code-server", "file": "workspaces/python/images/code-server.Containerfile", "version": "0.1.0", "workspace": true},
+            {"image": "python-vsix", "file": "workspaces/python/extensions/python-extensions.Containerfile", "version": "0.1.0", "workspace": true},
+            {"image": "python-workspace", "file": "workspaces/python/images/python.Containerfile", "version": "0.1.0", "target": "runtime", "workspace": true},
+            {"image": "k8s-workspace", "file": "workspaces/k8s-dev/image/Containerfile", "version": "0.1.0", "workspace": true},
+            {"image": "k8s-vsix", "file": "workspaces/k8s-dev/extensions/k8s-extensions.Containerfile", "version": "0.1.0", "workspace": true}
+          ]'
+          projects="$(
+            jq -c '[.[] | {
+              image: .name,
+              file: "workspaces/python/images/python.Containerfile",
+              version: "0.1.0",
+              project: .name,
+              target: "project",
+              workspace: true
+            }]' workspaces/python/projects.json
+          )"
+          matrix="$(
+            jq -cn --argjson base "$base" --argjson projects "$projects" \
+              '{include: ($base + $projects)}'
+          )"
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
+
   validate:
     if: github.event_name == 'pull_request'
     name: Build ${{ matrix.image }}
+    needs: plan
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     strategy:
       fail-fast: false
-      matrix: &image_matrix
-        include:
-          - image: coder
-            file: coder.Containerfile
-            version: 2.36.0-airgap
-          - image: coderd-provider
-            file: coderd-provider.Containerfile
-            version: 0.0.23
-          - image: coder-modules
-            file: modules/Containerfile
-            version: 0.1.0
-          - image: code-server
-            file: workspaces/python/images/code-server.Containerfile
-            version: 0.1.0
-            workspace: true
-          - image: python-vsix
-            file: workspaces/python/extensions/python-extensions.Containerfile
-            version: 0.1.0
-            workspace: true
-          - image: python-workspace
-            file: workspaces/python/images/python.Containerfile
-            version: 0.1.0
-            target: runtime
-            workspace: true
-          - image: dupe-trooper
-            file: workspaces/python/images/python.Containerfile
-            version: 0.1.0
-            project: dupe-trooper
-            target: project
-            workspace: true
-          - image: deja-doc
-            file: workspaces/python/images/python.Containerfile
-            version: 0.1.0
-            project: deja-doc
-            target: project
-            workspace: true
-          - image: k8s-workspace
-            file: workspaces/k8s-dev/image/Containerfile
-            version: 0.1.0
-            workspace: true
-          - image: k8s-vsix
-            file: workspaces/k8s-dev/extensions/k8s-extensions.Containerfile
-            version: 0.1.0
-            workspace: true
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
@@ -126,13 +124,14 @@ jobs:
   publish:
     if: github.event_name != 'pull_request'
     name: Publish ${{ matrix.image }}
+    needs: plan
     runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
     strategy:
       fail-fast: false
-      matrix: *image_matrix
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9

@@ -14,6 +14,14 @@ components:
       - registry.invalid/fabian1heinrich/coder-workspaces/python-workspace@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266
       - registry.invalid/fabian1heinrich/coder-workspaces/k8s-workspace@sha256:ef4b0b979aaa284ea8fef5040b6a8d9bb508da8d62d7d7b9bcc227b123d40493
 
+  # Templates resolve their shared pod module and the pinned Coder modules from
+  # this payload, so the control plane must mount it at /opt/coder-modules.
+  - name: coder-modules
+    description: Read-only OpenTofu module payload, including the shared workspace-pod module
+    required: true
+    images:
+      - registry.invalid/fabian1heinrich/coder-workspaces/coder-modules@sha256:9d5660abd1eeeb1420713cd258ee4825638d16559e7a4f56a50ae4af35508562
+
   - name: workspace-tooling
     description: Read-only code-server and VSIX payloads 0.1.0
     required: true
@@ -23,7 +31,7 @@ components:
       - registry.invalid/fabian1heinrich/coder-workspaces/k8s-vsix@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836
 
   - name: publisher-runtime
-    description: Offline OpenTofu and Coder provider runner
+    description: Offline Coder CLI template publisher runtime
     required: true
     images:
-      - registry.invalid/fabian1heinrich/coder-workspaces/coderd-provider@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916
+      - registry.invalid/fabian1heinrich/coder-workspaces/publisher@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916

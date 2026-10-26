@@ -1,20 +1,20 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+# Keys are the file names the template expects, so the publisher Job mounts
+# the ConfigMap as the template directory itself. Build inputs in
+# subdirectories are not template content and stay out of the payload.
 configMapGenerator:
   - name: coder-template-python
     files:
-      - python-template-lock.hcl=.terraform.lock.hcl
-      - python-template-readme.md=README.md
-      - python-template-agent.tf=agent.tf
-      - python-template-auth.tf=auth.tf
-      - python-template-deployment.tf=deployment.tf
-      - python-template-locals.tf=locals.tf
-      - python-template-parameters.tf=parameters.tf
-      - python-template-storage.tf=storage.tf
-      - python-template-variables.tf=variables.tf
-      - python-template-versions.tf=versions.tf
-
-generatorOptions:
-  annotations:
-    kustomize.toolkit.fluxcd.io/substitute: disabled
+      - .terraform.lock.hcl
+      - README.md
+      - agent.tf
+      - auth.tf
+      - deployment.tf
+      - locals.tf
+      - parameters.tf
+      - projects.json
+      - storage.tf
+      - variables.tf
+      - versions.tf

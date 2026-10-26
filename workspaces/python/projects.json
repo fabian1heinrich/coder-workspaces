@@ -1,0 +1,12 @@
+[
+  {
+    "name": "deja-doc",
+    "description": "Turns unruly PDFs, DOCX files, and other proprietary formats into RAG- and MCP-ready AI knowledge—because even legacy files deserve a second career.",
+    "recommended_size": "standard"
+  },
+  {
+    "name": "dupe-trooper",
+    "description": "Patrols the file structure for duplicate files and sends the redundant clones packing.",
+    "recommended_size": "standard"
+  }
+]

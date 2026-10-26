@@ -1,0 +1,12 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: template-publisher
+spec:
+  template:
+    spec:
+      imagePullSecrets:
+        - name: private-registry
+      containers:
+        - name: publish
+          image: "###ZARF_VAR_REGISTRY###/###ZARF_CONST_PUBLISHER_IMAGE###"

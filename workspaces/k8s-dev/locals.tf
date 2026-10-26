@@ -19,7 +19,7 @@ locals {
     }
   }
 
-  repository        = trim(data.coder_parameter.repository.value, "/")
+  repository        = trim(try(data.coder_parameter.repository[0].value, ""), "/")
   repository_parts  = local.repository == "" ? [] : split("/", local.repository)
   repository_name   = local.repository == "" ? "" : local.repository_parts[length(local.repository_parts) - 1]
   repository_url    = local.repository == "" ? "" : "${var.git_base_url}/${local.repository}.git"
@@ -49,24 +49,11 @@ locals {
     "com.coder.user.username"    = data.coder_workspace_owner.me.name
   }
 
-  git_environment = local.repository == "" || var.git_auth_mode != "zarf-secret" ? [] : [
-    {
-      name = "ZARF_GIT_USERNAME"
-      valueFrom = {
-        secretKeyRef = {
-          name = var.git_secret_name
-          key  = "username"
-        }
-      }
-    },
-    {
-      name = "ZARF_GIT_PASSWORD"
-      valueFrom = {
-        secretKeyRef = {
-          name = var.git_secret_name
-          key  = "password"
-        }
-      }
-    },
-  ]
+  # A Deployment selector is immutable. It carries only the stable workspace
+  # identity so that a workspace rename or a username change cannot invalidate
+  # an existing Deployment.
+  selector_labels = {
+    "app.kubernetes.io/name" = "coder-workspace"
+    "com.coder.workspace.id" = data.coder_workspace.me.id
+  }
 }

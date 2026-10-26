@@ -1,9 +1,11 @@
 data "coder_parameter" "repository" {
+  count = var.git_base_url == "" ? 0 : 1
+
   name         = "repository"
-  display_name = "Mirrored repository"
-  description  = "Owner/repository path in the internal Git service. Leave empty to start without cloning a repository."
+  display_name = "Repository"
+  description  = "Owner/repository path in the configured Git service. Leave empty to start without cloning a repository."
   type         = "string"
-  default      = var.default_repository
+  default      = var.repository
   order        = 1
   mutable      = false
   icon         = "/icon/git.svg"
@@ -15,11 +17,11 @@ data "coder_parameter" "repository" {
 }
 
 data "coder_parameter" "git_branch" {
-  count = data.coder_parameter.repository.value == "" ? 0 : 1
+  count = local.repository == "" ? 0 : 1
 
   name         = "git_branch"
   display_name = "Source revision"
-  description  = "Branch or immutable revision to clone from the mirrored repository."
+  description  = "Branch or revision to clone from the repository."
   type         = "string"
   default      = var.default_git_branch
   order        = 2

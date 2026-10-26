@@ -36,6 +36,13 @@ RUN set -eux; \
     && ! getent passwd vscode \
     && ! getent group vscode
 
+# Workspace startup is repo-owned shell, so it lives in the image instead of
+# being embedded in a template pod manifest.
+COPY --chown=root:root --chmod=0555 \
+    workspaces/workspace-startup.sh \
+    /usr/local/bin/workspace-startup
+RUN test -x /usr/local/bin/workspace-startup
+
 ENV HOME=/home/coder \
     SHELL=/usr/bin/zsh \
     USER=coder \
@@ -45,7 +52,7 @@ USER coder
 WORKDIR /home/coder
 
 LABEL org.opencontainers.image.title="Coder Python workspace runtime" \
-      org.opencontainers.image.description="VS Code Python devcontainer runtime for an air-gapped Coder workspace" \
+      org.opencontainers.image.description="Python dev container runtime for an air-gapped Coder workspace" \
       org.opencontainers.image.source="https://github.com/fabian1heinrich/coder-workspaces" \
       org.opencontainers.image.version="${IMAGE_VERSION}" \
       io.coder.workspace.runtime="python" \

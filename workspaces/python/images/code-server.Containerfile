@@ -9,7 +9,7 @@ ARG TARGETARCH
 
 # Recreate the layout produced by code-server's standalone installer. The
 # relative link remains valid when the payload image is mounted at an arbitrary
-# installation prefix, such as /opt/vscode-server.
+# installation prefix, such as /opt/code-server.
 RUN set -eu; \
   mkdir -p /opt/code-server/bin /opt/code-server/lib; \
   cp -a /usr/lib/code-server "/opt/code-server/lib/code-server-${CODE_SERVER_VERSION}"; \
@@ -30,6 +30,6 @@ LABEL org.opencontainers.image.title="Coder code-server standalone payload" \
   org.opencontainers.image.version="${IMAGE_VERSION}" \
   io.coder.code-server.version="${CODE_SERVER_VERSION}" \
   io.coder.code-server.source-image="ghcr.io/coder/code-server@sha256:ccd326184d71efc5ebb94155eda7bb30153902342a35dbc8525450d81aa55012" \
-  io.coder.image-volume.mount-path="/opt/vscode-server"
+  io.coder.image-volume.mount-path="/opt/code-server"
 
 COPY --from=source /opt/code-server/ /

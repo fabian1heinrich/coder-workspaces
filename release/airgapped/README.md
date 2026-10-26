@@ -1,9 +1,11 @@
 # Air-gapped Coder workspace release
 
-Run from the copied `coder-workspaces` directory. These are mirror archives;
-never deploy them. The consuming platform provides registry credentials and
-Flux substitutions. `WORKLOAD_NAMESPACE` is the publisher namespace, not the
-workspace namespace.
+Run from the copied `coder-workspaces` directory. The images archive is a
+mirror archive and is never deployed; the publication package is deployed
+against the existing Coder deployment. The consuming platform provides registry
+credentials and the publication values.
+
+The host needs Bash, direnv, Just, curl, jq, the Coder CLI, Zarf, and `kubectl`.
 
 Prepare the environment and verify the copied release:
 
@@ -15,56 +17,52 @@ test -f "$KUBECONFIG"
 sha256sum --check SHA256SUMS
 ```
 
-For a template-only release:
+For a template-only release, publish with the password-authenticated identity
+configured by `CODER_URL` and `CODER_EMAIL`:
 
 ```sh
-just mirror
+just publish
 ```
 
-When an image changed, mirror images before the source:
+The recipe prompts for the password, creates a uniquely named one-hour API
+token, passes it only to the connected Zarf deployment, then hard-deletes that
+token and logs out the password session on both success and failure. Set
+`PUBLISH_PACKAGE` only when the directory contains more than one publication
+package.
+
+When an image changed, mirror images before publishing:
 
 ```sh
-just mirror-all
+SSL_CERT_FILE="$REGISTRY_CA_FILE" \
+ZARF_INIT_REGISTRY_PUSH_PASSWORD="$(
+  kubectl -n "$REGISTRY_WRITER_SECRET_NAMESPACE" \
+    get secret "$REGISTRY_WRITER_SECRET_NAME" \
+    -o "jsonpath={.data.$REGISTRY_WRITER_SECRET_KEY}" | base64 --decode
+)" \
+zarf package mirror-resources \
+  ./zarf-package-coder-workspaces-image-mirror-amd64-*.tar.zst \
+  --registry-url "$ZARF_VAR_REGISTRY" \
+  --registry-push-username "$REGISTRY_PUSH_USERNAME" \
+  --components=workspace-runtime,coder-modules,workspace-tooling,publisher-runtime \
+  --images \
+  --no-img-checksum \
+  --confirm
 ```
 
-Mirroring leaves the source inactive. Verify the recorded digest, then apply
-the generated selector:
+Then run `just publish`.
+
+The publication package creates the credential Secret imperatively, outside
+its rendered manifests, runs the publisher Job as a Zarf health check, and
+deletes the Secret again on both the success and the failure path. The token is
+therefore absent from Helm release data. A rejected token, an unreachable Coder
+deployment, or a template that fails to build fails the deploy in front of you.
+Read the Job's output with:
 
 ```sh
-release_id="$(sed -n 's/^release_id=//p' RELEASE-METADATA)"
-source_tag="$(sed -n 's/^source_tag=//p' RELEASE-METADATA)"
-source_digest="$(sed -n 's/^source_digest=//p' RELEASE-METADATA)"
-source_repository="${REGISTRY_URL%/}/fabian1heinrich/coder-workspaces/source"
-source_revision="$source_digest"
-docker_config="$(mktemp -d)"
-export DOCKER_CONFIG="$docker_config"
-kubectl -n flux-system get secret zot-reader \
-  -o jsonpath='{.data.\.dockerconfigjson}' | base64 --decode \
-  > "$DOCKER_CONFIG/config.json"
-chmod 0600 "$DOCKER_CONFIG/config.json"
-
-test "$source_tag" = "$release_id"
-test "$(SSL_CERT_FILE="$REGISTRY_CA_FILE" \
-  zarf tools registry digest "$source_repository:$source_tag")" = "$source_digest"
-rm -rf -- "$docker_config"
-unset DOCKER_CONFIG
-kubectl apply --server-side -f flux-entrypoint.yaml
+kubectl -n coder-template-publisher logs job/template-publisher
 ```
 
-On first installation, activate the consuming application release. Then wait
-for the exact source, child reconciliation, and publisher Job:
-
-```sh
-kubectl -n flux-system wait ocirepository/coder-workspaces \
-  --for=jsonpath="{.status.artifact.revision}=$source_revision" --timeout=5m
-kubectl -n flux-system wait kustomization/coder-workspaces \
-  --for=jsonpath="{.status.lastAppliedRevision}=$source_revision" --timeout=15m
-kubectl -n flux-system wait kustomization/coder-workspaces \
-  --for=condition=ready --timeout=15m
-kubectl -n "$WORKLOAD_NAMESPACE" wait "job/$PUBLISHER_JOB_NAME" \
-  --for=condition=Complete --timeout=10m
-```
-
-To roll back, use an older copied release, mirror its source if needed, and
-reapply its `flux-entrypoint.yaml`. Never overwrite a source tag. Rollback does
-not reverse publisher state or prior Coder API changes.
+Publication is idempotent: unchanged template content and unchanged image
+digests leave the active template version in place. To roll back, publish from
+an older copied release; rollback does not reverse prior Coder API changes, and
+existing workspaces keep the template version they were built from.

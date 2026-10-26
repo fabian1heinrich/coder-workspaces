@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - job.yaml
+  - network-policy.yaml
+  - serviceaccount.yaml
+
+# The publisher code is immutable package payload. Environment-specific,
+# non-secret values are supplied by a ConfigMap generated in each overlay.
+configMapGenerator:
+  - name: coder-template-publisher
+    files:
+      - publish.sh
