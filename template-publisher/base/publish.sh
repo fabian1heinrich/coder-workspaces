@@ -11,6 +11,7 @@ umask 077
 coder="${CODER_CLI:-/opt/coder}"
 template_version=0.1.0
 source_dir="${PUBLISHER_SOURCE_DIR:-/source}"
+workspace_pod_source_dir="${PUBLISHER_WORKSPACE_POD_SOURCE_DIR:-/source/workspace-pod}"
 work_dir="${PUBLISHER_WORK_DIR:-/workspace/templates}"
 publish_id="${PUBLISH_ID:-}"
 
@@ -36,6 +37,10 @@ stage() {
   rm -rf -- "${staged}"
   mkdir -p -- "${staged}"
   cp -RL "${source_dir}/${subdirectory}/." "${staged}/"
+  mkdir -p -- "${staged}/workspace-pod"
+  cp -RL "${workspace_pod_source_dir}/." "${staged}/workspace-pod/"
+  chmod 0755 "${staged}/workspace-pod"
+  chmod 0644 "${staged}/workspace-pod/"*.tf
   printf '%s\n' "${staged}"
 }
 

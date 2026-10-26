@@ -49,7 +49,8 @@ Set the template version in `base/publish.sh`. Use the [local Zarf
 commands](../dev/README.md).
 
 Production publication does not update existing workspaces, and takes its
-credential from `ZARF_VAR_CODER_TOKEN` at deploy time. The production package
-creates the referenced Secret imperatively so the token never enters rendered
-Helm release data, then deletes it on success or failure. Mirror its
+manually created credential from `ZARF_VAR_CODER_TOKEN` at deploy time. The
+production package creates the referenced Secret imperatively so the token
+never enters rendered Helm release data, then deletes it on success or failure.
+The operator revokes the API token in Coder after deployment. Mirror its
 digest-pinned images first; see the [production release workflow](../release/README.md).

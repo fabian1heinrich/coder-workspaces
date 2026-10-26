@@ -5,7 +5,7 @@ mirror archive and is never deployed; the publication package is deployed
 against the existing Coder deployment. The consuming platform provides registry
 credentials and the publication values.
 
-The host needs Bash, direnv, Just, curl, jq, the Coder CLI, Zarf, and `kubectl`.
+The host needs Bash, Just, direnv, Zarf, `kubectl`, jq, base64, and sha256sum.
 
 Prepare the environment and verify the copied release:
 
@@ -15,20 +15,8 @@ $EDITOR .env
 direnv allow
 test -f "$KUBECONFIG"
 sha256sum --check SHA256SUMS
+kubectl -n coder-template-publisher get secret/zot-reader
 ```
-
-For a template-only release, publish with the password-authenticated identity
-configured by `CODER_URL` and `CODER_EMAIL`:
-
-```sh
-just publish
-```
-
-The recipe prompts for the password, creates a uniquely named one-hour API
-token, passes it only to the connected Zarf deployment, then hard-deletes that
-token and logs out the password session on both success and failure. Set
-`PUBLISH_PACKAGE` only when the directory contains more than one publication
-package.
 
 When an image changed, mirror images before publishing:
 
@@ -43,23 +31,48 @@ zarf package mirror-resources \
   ./zarf-package-coder-workspaces-image-mirror-amd64-*.tar.zst \
   --registry-url "$ZARF_VAR_REGISTRY" \
   --registry-push-username "$REGISTRY_PUSH_USERNAME" \
-  --components=workspace-runtime,coder-modules,workspace-tooling,publisher-runtime \
+  --components=workspace-runtime,coder-modules,workspace-tooling,project-images,publisher-runtime \
   --images \
   --no-img-checksum \
   --confirm
 ```
 
-Then run `just publish`.
-
-The publication package creates the credential Secret imperatively, outside
-its rendered manifests, runs the publisher Job as a Zarf health check, and
-deletes the Secret again on both the success and the failure path. The token is
-therefore absent from Helm release data. A rejected token, an unreachable Coder
-deployment, or a template that fails to build fails the deploy in front of you.
-Read the Job's output with:
+After any required mirroring, create a short-lived API token manually in Coder
+from an account with Template Admin or Owner rights. Keep it out of `.env` and
+shell history. Run the publication recipe, enter the token at its hidden prompt,
+and revoke it in Coder immediately afterward. Paste the token once and press
+Enter; the terminal intentionally displays no characters while reading it.
 
 ```sh
-kubectl -n coder-template-publisher logs job/template-publisher
+just publish
+```
+
+`just publish` reads the token inside its Bash process and maps it with the
+other `ZARF_VAR_*` inputs into Zarf's
+`package.deploy.set` configuration before running `zarf package deploy
+--connected --confirm`. Zarf exposes deployment variables to package actions
+with `ZARF_VAR_*` names, but does not consume arbitrary `ZARF_VAR_*` shell
+variables as deployment inputs. Calling the raw deploy command with `--confirm`
+would therefore skip prompts and use empty values.
+
+The publication package first verifies that `zot-reader` contains credentials
+for the configured registry and that the completed Coder rollout declares the
+expected digest-pinned module image at `/opt/coder-modules`. This check reads
+the Deployment specification and does not require `pods/exec` access. It then
+creates the credential Secret imperatively, outside its rendered manifests, and
+runs the publisher Job as a Zarf health check. Success deletes the Secret after
+the Job health check through Zarf's `onSuccess` action; an `after` action would
+run immediately after applying the Job and is therefore intentionally not used.
+Failure deletes the Job before deleting the Secret, so Kubernetes never retains
+a Pod that references a removed credential. If Kubernetes cannot confirm Job
+deletion, cleanup stops and preserves the Secret for the still-existing Job.
+The token is therefore absent from Helm release data. Revoking the Coder API
+token remains an operator action. A rejected token, an unreachable Coder
+deployment, or a template that fails to build fails the deploy in front of you.
+Follow the Job's output while the deployment is active with:
+
+```sh
+kubectl -n coder-template-publisher logs --follow job/template-publisher
 ```
 
 Publication is idempotent: unchanged template content and unchanged image

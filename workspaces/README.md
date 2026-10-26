@@ -11,7 +11,7 @@ This directory owns two Coder templates for disconnected Kubernetes:
 
 Both templates create their Pod and persistent home through the shared
 [`workspace-pod`](../modules/workspace-pod/README.md) module in the Coder
-modules payload, so they persist `/home/coder`, request and limit CPU and
+template archive, so they persist `/home/coder`, request and limit CPU and
 memory, limit ephemeral storage, and run as UID/GID 1000 with the restricted
 pod defaults identically.
 code-server is mounted read-only at `/opt/code-server`. Each template mounts
@@ -45,8 +45,9 @@ The `k8s-dev` environment mounts no ServiceAccount token. Users supply
 - amd64 nodes and Coder Community 2.36.0 with the provider versions pinned in
   the control-plane Containerfiles.
 - The Coder modules image mounted read-only at `/opt/coder-modules` on the
-  control plane that runs the built-in provisioners. Templates resolve both the
-  pinned upstream modules and the shared `workspace-pod` module from it.
+  control plane that runs the built-in provisioners. Templates resolve the
+  pinned upstream modules from it; the shared `workspace-pod` module is bundled
+  in each template archive.
 - Kubernetes and a compatible CRI supporting `spec.volumes[].image`. Image
   volumes are [stable and enabled by default in Kubernetes
   1.36](https://kubernetes.io/docs/tasks/configure-pod-container/image-volumes/).

@@ -62,10 +62,11 @@ Keep these layers separate and independently versioned:
   its Job and identity, and the template payload. Do not reintroduce Flux
   objects, a Flux OCI source, or `${}` substitution. Keep the fixed namespace,
   pull Secret, Git auth, and branch contract in the templates and manifests;
-  expose only deployment-specific values as Zarf variables. The publishing token is
-  supplied as `ZARF_VAR_CODER_TOKEN` for one deployment, created imperatively
-  as a Secret outside rendered release data, and deleted with the API token
-  afterwards; never store it.
+  expose only deployment-specific values as Zarf variables. The publishing
+  token is created manually and supplied as `ZARF_VAR_CODER_TOKEN` for one
+  deployment. The package creates its Secret imperatively outside rendered
+  release data and removes it from the cluster afterwards. The operator revokes
+  the API token in Coder; never store it.
   The consuming platform owns the registry, Git access, project images, the
   resources required by the fixed contract, and mounting the mirrored Coder
   modules image at

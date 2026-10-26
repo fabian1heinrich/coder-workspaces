@@ -68,6 +68,9 @@ spec:
             - name: k8s-dev-template-source
               mountPath: /source/k8s-dev-template
               readOnly: true
+            - name: workspace-pod-source
+              mountPath: /source/workspace-pod
+              readOnly: true
             - name: workspace
               mountPath: /workspace
             - name: tmp
@@ -84,6 +87,10 @@ spec:
         - name: k8s-dev-template-source
           configMap:
             name: coder-template-k8s-dev
+            defaultMode: 0444
+        - name: workspace-pod-source
+          configMap:
+            name: coder-template-workspace-pod
             defaultMode: 0444
         - name: workspace
           emptyDir: {}

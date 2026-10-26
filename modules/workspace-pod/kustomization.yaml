@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# The publisher mounts this ConfigMap and copies the module into each staged
+# template. Keeping the generator here preserves modules/workspace-pod as the
+# single source of truth while making every published template self-contained.
+configMapGenerator:
+  - name: coder-template-workspace-pod
+    files:
+      - main.tf
+      - outputs.tf
+      - variables.tf
+      - versions.tf

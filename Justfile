@@ -98,6 +98,32 @@ package-release: (_package-release "all")
 # Package only the production template publication media.
 package-release-templates: (_package-release "templates")
 
+# Package and copy only the production template publication media.
+copy destination=env("RELEASE_DESTINATION", ""): package-release-templates (_copy destination)
+
+# Package and copy the production template publication and image-mirror media.
+copy-all destination=env("RELEASE_DESTINATION", ""): package-release (_copy destination)
+
+[private]
+_copy requested_destination:
+    #!/usr/bin/env -S direnv exec . bash
+    set -euo pipefail
+    requested_destination={{ quote(requested_destination) }}
+    : "${requested_destination:?Pass an existing writable destination or set RELEASE_DESTINATION}"
+    destination="$(realpath "$requested_destination")"
+    target="$destination/coder-workspaces"
+    repository="$(git rev-parse --show-toplevel)"
+    test -d "$destination"
+    test -w "$destination"
+    test "$destination" != /
+    [[ "$destination/" != "$repository/"* ]]
+    [[ "$repository/" != "$target/"* ]]
+    rm -rf -- "$target"
+    cp -R -- "$BUILD_DIR/coder-workspaces" "$target"
+    find "$target" -type d -exec chmod 0755 {} +
+    find "$target" -type f -exec chmod 0644 {} +
+    sync -f "$target"
+
 [private]
 _package-release mode:
     #!/usr/bin/env -S direnv exec . bash
@@ -109,21 +135,20 @@ _package-release mode:
     revision="$(git rev-parse HEAD)"
     date="$(git show -s --format=%cs HEAD)"
     release="${date//-/.}-g${revision:0:12}"
-    root="$(git rev-parse --show-toplevel)"
     bundle="$BUILD_DIR/coder-workspaces"
-    rm -rf "$bundle"
-    mkdir -p "$bundle"
-    zarf package create release/publish --architecture amd64 --output "$root" \
+    rm -rf -- "$bundle"
+    mkdir -p -- "$bundle"
+    zarf package create release/publish --architecture amd64 --output "$bundle" \
       --set RELEASE_ID="$release" --confirm
-    cp "$root/zarf-package-coder-workspaces-publish-amd64-${release}.tar.zst" \
+    mv -- "$bundle/zarf-package-coder-workspaces-publish-amd64-${release}.tar.zst" \
       "$bundle/zarf-package-coder-workspaces-template-publisher-amd64-${release}.tar.zst"
     printf 'release_id=%s\ngit_revision=%s\n' "$release" "$revision" > "$bundle/RELEASE-METADATA"
     cp -R release/airgapped/. "$bundle/"
     if test {{ quote(mode) }} = all; then
       zarf package create release/images --architecture amd64 \
-        --registry-override registry.invalid=ghcr.io --output "$root" \
+        --registry-override registry.invalid=ghcr.io --output "$bundle" \
         --set RELEASE_ID="$release" --confirm
-      cp "$root/zarf-package-coder-workspaces-images-amd64-${release}.tar.zst" \
+      mv -- "$bundle/zarf-package-coder-workspaces-images-amd64-${release}.tar.zst" \
         "$bundle/zarf-package-coder-workspaces-image-mirror-amd64-${release}.tar.zst"
     fi
     (cd "$bundle" && find . -type f ! -name SHA256SUMS -exec sha256sum {} + | sort -k2 > SHA256SUMS)

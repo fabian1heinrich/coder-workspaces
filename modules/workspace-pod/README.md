@@ -1,12 +1,12 @@
 # workspace-pod
 
 Repository-owned OpenTofu module that creates a workspace's persistent home
-claim and its Deployment. Every template in this repository consumes it from
-the Coder modules image at `/opt/coder-modules/workspace-pod`, so the pod
-security contract, the read-only OCI image volumes, and the persistence
-boundary exist in exactly one place. Workspace Pods never automount a
-Kubernetes ServiceAccount token; cluster credentials belong in user-managed
-persistent state.
+claim and its Deployment. The publisher copies this directory into every
+template archive, and each template consumes it through `./workspace-pod`.
+This directory remains the single source of truth for the pod security
+contract, read-only OCI image volumes, and persistence boundary. Workspace
+Pods never automount a Kubernetes ServiceAccount token; cluster credentials
+belong in user-managed persistent state.
 
 `git_auth_mode=secret` adds URL-scoped Git configuration and reads `username`
 and `password` from the named Kubernetes Secret. Git's inline credential
@@ -18,6 +18,5 @@ Templates keep what is genuinely template-specific: parameters, the agent and
 its modules, workspace metadata, and the `startup_commands` their runtime image
 provides.
 
-Because this module ships inside the modules image, the control plane must
-mount that image at `/opt/coder-modules`; see
-[`modules/README.md`](../README.md).
+The separate modules image remains mounted at `/opt/coder-modules` for pinned
+upstream Coder modules; see [`modules/README.md`](../README.md).

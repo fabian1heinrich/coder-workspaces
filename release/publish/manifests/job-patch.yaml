@@ -6,7 +6,7 @@ spec:
   template:
     spec:
       imagePullSecrets:
-        - name: private-registry
+        - name: zot-reader
       containers:
         - name: publish
           image: "###ZARF_VAR_REGISTRY###/###ZARF_CONST_PUBLISHER_IMAGE###"

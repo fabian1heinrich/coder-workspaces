@@ -22,7 +22,7 @@ variable "image" {
 variable "code_server_image" {
   type        = string
   description = "GHCR code-server image-volume payload, pinned by sha256 digest."
-  default     = "ghcr.io/fabian1heinrich/coder-workspaces/code-server:0.1.0@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8"
+  default     = "ghcr.io/fabian1heinrich/coder-workspaces/code-server:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:dd63e14c38e2a60b165f90b86d72c05ebf0faae2b54ce6cf38a30ec7c4bd84e1"
 
   validation {
     condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.code_server_image))

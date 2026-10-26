@@ -39,11 +39,14 @@ RUN set -eu; \
   find /out -type d -exec chmod 0755 {} +; \
   find /out -type f -exec chmod 0644 {} +
 
-# The repository-owned workspace pod module ships beside the pinned upstream
-# modules so that every template resolves it from the same read-only payload.
-COPY --chmod=0444 modules/workspace-pod/*.tf /out/workspace-pod/
+# Keep the repository-owned workspace pod module in the payload for artifact
+# provenance. Published templates carry their own copy so a template revision
+# remains self-contained and does not resolve this module through the mount.
+COPY --chmod=0644 modules/workspace-pod/*.tf /out/workspace-pod/
 
-RUN test -s /out/workspace-pod/main.tf \
+RUN chmod 0755 /out/workspace-pod \
+  && test -x /out/workspace-pod \
+  && test -s /out/workspace-pod/main.tf \
   && test -s /out/workspace-pod/variables.tf \
   && test -s /out/workspace-pod/outputs.tf \
   && test -s /out/workspace-pod/versions.tf

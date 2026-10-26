@@ -11,27 +11,36 @@ components:
     description: Python and Kubernetes operations workspace runtimes 0.1.0
     required: true
     images:
-      - registry.invalid/fabian1heinrich/coder-workspaces/python-workspace@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266
-      - registry.invalid/fabian1heinrich/coder-workspaces/k8s-workspace@sha256:ef4b0b979aaa284ea8fef5040b6a8d9bb508da8d62d7d7b9bcc227b123d40493
+      - registry.invalid/fabian1heinrich/coder-workspaces/python-workspace:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:a60eada69bd2aa2117e0c40f0afaf1f9be667ad74f46d3182a85272a261ea295
+      - registry.invalid/fabian1heinrich/coder-workspaces/k8s-workspace:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:4d8258488a49a6a205ff99adaa293f0dfc10c02a1b812cc0c5beda9ac871fbd3
 
   # Templates resolve their shared pod module and the pinned Coder modules from
-  # this payload, so the control plane must mount it at /opt/coder-modules.
+  # this payload, so the consuming control-plane release must transport this
+  # exact digest before mounting it at /opt/coder-modules. Carrying it here as
+  # well keeps the workspace release portable and repeated mirroring is safe.
   - name: coder-modules
     description: Read-only OpenTofu module payload, including the shared workspace-pod module
     required: true
     images:
-      - registry.invalid/fabian1heinrich/coder-workspaces/coder-modules@sha256:9d5660abd1eeeb1420713cd258ee4825638d16559e7a4f56a50ae4af35508562
+      - registry.invalid/fabian1heinrich/coder-workspaces/coder-modules:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:e4f10be5f9c6253c98ddce8d4f1b836c80463f78c1efcb8da0179955265136ba
 
   - name: workspace-tooling
     description: Read-only code-server and VSIX payloads 0.1.0
     required: true
     images:
-      - registry.invalid/fabian1heinrich/coder-workspaces/code-server@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8
-      - registry.invalid/fabian1heinrich/coder-workspaces/python-vsix@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b
-      - registry.invalid/fabian1heinrich/coder-workspaces/k8s-vsix@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836
+      - registry.invalid/fabian1heinrich/coder-workspaces/code-server:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:dd63e14c38e2a60b165f90b86d72c05ebf0faae2b54ce6cf38a30ec7c4bd84e1
+      - registry.invalid/fabian1heinrich/coder-workspaces/python-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:c16f4cf49bdaf1136e78b0cd7e05f78ec72909bce78502fb5fa09ea01ee047cd
+      - registry.invalid/fabian1heinrich/coder-workspaces/k8s-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836
+
+  - name: project-images
+    description: Optional Python project environments 0.1.0
+    required: true
+    images:
+      - registry.invalid/fabian1heinrich/coder-workspaces/deja-doc:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:6cad2e90ed0fc00a4287e53687b3e5fc6551e6aa35f5bb99f76ea9040d7931b2
+      - registry.invalid/fabian1heinrich/coder-workspaces/dupe-trooper:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:cf9abbef2aad9cf75579c22cb821f01b322ec296624eedfa6fd47b8e5306ecd2
 
   - name: publisher-runtime
     description: Offline Coder CLI template publisher runtime
     required: true
     images:
-      - registry.invalid/fabian1heinrich/coder-workspaces/publisher@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916
+      - registry.invalid/fabian1heinrich/coder-workspaces/publisher:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:9ac40c87c7e5ffdcda2ff8aa2bf02f7a310bb0f8bd4061a73c5bc11bb5e4ba37

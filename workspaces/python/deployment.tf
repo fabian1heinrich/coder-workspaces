@@ -1,8 +1,8 @@
 # The workspace Pod and its persistent home come from the repository-owned
-# shared module in the Coder modules payload, so this template declares only
+# shared module bundled in the template archive, so this template declares only
 # what is specific to a Python workspace.
 module "workspace" {
-  source = "/opt/coder-modules/workspace-pod"
+  source = "./workspace-pod"
 
   start_count     = data.coder_workspace.me.start_count
   namespace       = var.namespace

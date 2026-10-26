@@ -9,14 +9,16 @@ metadata:
 variables:
   - name: CODER_TOKEN
     description: >-
-      Coder API token for the publishing identity. The air-gapped publish recipe
-      creates it immediately before deployment, supplies it as
-      ZARF_VAR_CODER_TOKEN, and revokes it afterward; it is never stored in this
-      package or the release media.
+      Short-lived Coder API token created manually immediately before
+      deployment and supplied by the release's just publish recipe. Revoke it
+      in Coder after deployment; it is never stored in this package or the
+      release media.
     sensitive: true
+    pattern: "^.+$"
     prompt: true
   - name: REGISTRY
     description: Internal registry holding the mirrored workspace images.
+    pattern: "^[a-zA-Z0-9.-]+(:[0-9]+)?$"
     prompt: true
   - name: DEJA_DOC_IMAGE
     description: Digest-pinned deja-doc workspace image; empty disables the project.
@@ -63,17 +65,17 @@ variables:
 # registry, which the images package mirrors beforehand.
 constants:
   - name: PUBLISHER_IMAGE
-    value: "fabian1heinrich/coder-workspaces/publisher@sha256:e3a9e96ab74f5407c0f8533c338018a3cae46959235b5dbcd9eb55d70daaa916"
+    value: "fabian1heinrich/coder-workspaces/publisher:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:9ac40c87c7e5ffdcda2ff8aa2bf02f7a310bb0f8bd4061a73c5bc11bb5e4ba37"
   - name: WORKSPACE_IMAGE
-    value: "fabian1heinrich/coder-workspaces/python-workspace:0.1.0@sha256:9da7db38010f8fca3b97436aada761112856cdf2631ceede34efbce30f985266"
+    value: "fabian1heinrich/coder-workspaces/python-workspace:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:a60eada69bd2aa2117e0c40f0afaf1f9be667ad74f46d3182a85272a261ea295"
   - name: K8S_WORKSPACE_IMAGE
-    value: "fabian1heinrich/coder-workspaces/k8s-workspace:0.1.0@sha256:ef4b0b979aaa284ea8fef5040b6a8d9bb508da8d62d7d7b9bcc227b123d40493"
+    value: "fabian1heinrich/coder-workspaces/k8s-workspace:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:4d8258488a49a6a205ff99adaa293f0dfc10c02a1b812cc0c5beda9ac871fbd3"
   - name: K8S_VSIX_IMAGE
-    value: "fabian1heinrich/coder-workspaces/k8s-vsix:0.1.0@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836"
+    value: "fabian1heinrich/coder-workspaces/k8s-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836"
   - name: CODE_SERVER_IMAGE
-    value: "fabian1heinrich/coder-workspaces/code-server:0.1.0@sha256:8405424b2479f19052945ee65376fbbfabd97e1ac04bb9fabaf963074cb2cdf8"
+    value: "fabian1heinrich/coder-workspaces/code-server:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:dd63e14c38e2a60b165f90b86d72c05ebf0faae2b54ce6cf38a30ec7c4bd84e1"
   - name: VSIX_IMAGE
-    value: "fabian1heinrich/coder-workspaces/python-vsix:0.1.0@sha256:96e870317cbe15144a0d0f17ab2d8a1dc6d53dae121dc01f3d4751d62cbd628b"
+    value: "fabian1heinrich/coder-workspaces/python-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:c16f4cf49bdaf1136e78b0cd7e05f78ec72909bce78502fb5fa09ea01ee047cd"
 
 # The production cluster uses its own registry for these independently released
 # images. Deploy with `zarf package deploy --connected` so Zarf applies the
@@ -85,6 +87,62 @@ components:
     actions:
       onDeploy:
         before:
+          - cmd: |
+              set -eu
+              registry_config="$(
+                ./zarf tools kubectl -n coder-template-publisher \
+                  get secret zot-reader \
+                  -o jsonpath='{.data.\.dockerconfigjson}' |
+                  base64 --decode
+              )"
+              if ! printf '%s' "$registry_config" |
+                jq -e --arg registry "${ZARF_VAR_REGISTRY:?}" '
+                  .auths[$registry] as $credentials
+                  | ($credentials | type == "object")
+                    and (
+                      (($credentials.auth // "") | length) > 0
+                      or (
+                        (($credentials.username // "") | length) > 0
+                        and (($credentials.password // "") | length) > 0
+                      )
+                    )
+                ' >/dev/null; then
+                echo "Secret coder-template-publisher/zot-reader has no credentials for ${ZARF_VAR_REGISTRY}" >&2
+                exit 1
+              fi
+            description: Verify the publisher registry credential
+          - cmd: |
+              set -eu
+              ./zarf tools kubectl -n coder \
+                rollout status deployment/coder --timeout=5m
+              expected_reference="${ZARF_VAR_REGISTRY:?}/fabian1heinrich/coder-workspaces/coder-modules:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:e4f10be5f9c6253c98ddce8d4f1b836c80463f78c1efcb8da0179955265136ba"
+              deployment="$(
+                ./zarf tools kubectl -n coder get deployment coder -o json
+              )"
+              if ! printf '%s' "$deployment" | jq -e --arg reference "$expected_reference" '
+                any(
+                  .spec.template.spec.volumes[]?;
+                  .name == "coder-modules" and .image.reference == $reference
+                )
+                and any(
+                  .spec.template.spec.containers[]?
+                  | select(.name == "coder")
+                  | .volumeMounts[]?;
+                  .name == "coder-modules"
+                    and .mountPath == "/opt/coder-modules"
+                    and .readOnly == true
+                )
+              ' >/dev/null; then
+                actual_reference="$(
+                  printf '%s' "$deployment" |
+                    jq -r '.spec.template.spec.volumes[]? | select(.name == "coder-modules") | .image.reference // "<missing>"'
+                )"
+                echo "Coder is not running the required module volume." >&2
+                echo "Expected: ${expected_reference}" >&2
+                echo "Observed: ${actual_reference:-<missing>}" >&2
+                exit 1
+              fi
+            description: Verify the built-in provisioner module volume
           - cmd: |
               set -eu
               ./zarf tools kubectl -n coder-template-publisher \
@@ -100,21 +158,23 @@ components:
                 ./zarf tools kubectl apply --server-side -f -
             description: Create the short-lived publishing credential
             mute: true
-        # The credential exists only for the duration of the publication, on
-        # both the success and the failure path.
-        after:
+        # Keep the credential until the Job health check succeeds. `after`
+        # runs after resource application and is too early for Pod startup.
+        onSuccess:
           - cmd: |
               set -eu
               ./zarf tools kubectl -n coder-template-publisher \
                 delete secret coder-template-publisher-auth --ignore-not-found
-            description: Remove the publishing credential
+            description: Remove the publishing credential after publication
             mute: true
         onFailure:
           - cmd: |
               set -eu
               ./zarf tools kubectl -n coder-template-publisher \
+                delete job template-publisher --ignore-not-found --wait=true
+              ./zarf tools kubectl -n coder-template-publisher \
                 delete secret coder-template-publisher-auth --ignore-not-found
-            description: Remove the publishing credential after a failed publication
+            description: Remove the failed publication Job and its credential
             mute: true
     manifests:
       - name: coder-workspace-template-publisher
