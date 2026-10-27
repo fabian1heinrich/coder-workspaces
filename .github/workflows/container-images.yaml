@@ -133,7 +133,9 @@ jobs:
                   publisher.Containerfile)
                     want publisher
                     ;;
-                  modules/Containerfile|modules/modules.lock|modules/workspace-pod/*.tf)
+                  # workspace-pod is bundled into each template; changing it
+                  # must not roll the control-plane module payload.
+                  modules/Containerfile|modules/modules.lock)
                     want coder-modules
                     ;;
                   workspaces/workspace-startup.sh)

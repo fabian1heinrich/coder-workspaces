@@ -1,6 +1,6 @@
 #!/bin/sh
 # Reconcile image-owned workspace state before the Coder agent starts: the
-# approved VS Code-compatible extension set and any managed Python environment.
+# approved VS Code-compatible extension set and any opted-in Python environment.
 #
 # The approved set is platform state: it is rebuilt from the read-only
 # /opt/vsix image volume whenever that payload changes, so a VSIX withdrawn
@@ -14,7 +14,7 @@ code_server_prefix="${CODER_CODE_SERVER_PREFIX:-/opt/code-server}"
 extensions_dir="${CODER_EXTENSIONS_DIR:-${HOME}/.local/share/code-server/extensions}"
 payload_marker=".coder-vsix-payload"
 python_config_dir="${CODER_PYTHON_CONFIG_DIR:-/opt/project-config}"
-python_environment="${CODER_PYTHON_ENVIRONMENT:-${HOME}/.venv}"
+python_environment="${CODER_PYTHON_ENVIRONMENT:-}"
 
 # Image volumes are immutable for a given digest, so the file names and sizes
 # of the payload identify it without reading every byte at startup.
@@ -67,8 +67,28 @@ sync_extensions() {
 }
 
 sync_python_environment() {
-  [ -r "${python_config_dir}/pyproject.toml" ] || return 0
-  [ -r "${python_config_dir}/uv.lock" ] || return 0
+  # Only Python workspace images opt into this contract. Other workspace
+  # images share this startup script but leave CODER_PYTHON_ENVIRONMENT unset.
+  [ -n "${python_environment}" ] || return 0
+
+  if [ ! -r "${python_config_dir}/pyproject.toml" ] &&
+    [ ! -r "${python_config_dir}/uv.lock" ]; then
+    if [ ! -x "${python_environment}/bin/python" ]; then
+      command -v python3 >/dev/null 2>&1 || {
+        printf 'workspace-startup: Python workspace requires python3\n' >&2
+        return 1
+      }
+      python3 -m venv "${python_environment}"
+    fi
+    test -x "${python_environment}/bin/python"
+    return
+  fi
+
+  if [ ! -r "${python_config_dir}/pyproject.toml" ] ||
+    [ ! -r "${python_config_dir}/uv.lock" ]; then
+    printf 'workspace-startup: managed Python project configuration is incomplete\n' >&2
+    return 1
+  fi
 
   command -v uv >/dev/null 2>&1 || {
     printf 'workspace-startup: managed Python project requires uv\n' >&2

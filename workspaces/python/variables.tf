@@ -7,7 +7,7 @@ variable "namespace" {
 variable "sandbox_image" {
   type        = string
   description = "Default Python sandbox runtime in the deployment-owned registry, pinned by sha256 digest."
-  default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:a60eada69bd2aa2117e0c40f0afaf1f9be667ad74f46d3182a85272a261ea295"
+  default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:2c4c704290f1c687a5e70e73d2773f7f615e895f7452e672aaee5cdd968d172a"
 
   validation {
     condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.sandbox_image))

@@ -19,17 +19,17 @@ Each project pins Python and all dependencies. The project target copies the
 digest-pinned uv 0.8.15 binary, performs a locked sync without installing the
 project, and stores the cache in `/opt/uv-cache`.
 
-At runtime `UV_OFFLINE=true`, `UV_PYTHON_DOWNLOADS=never`, and
-`UV_LINK_MODE=copy` prevent public downloads and make the read-only image cache
-usable. `/opt/project-config` contains the two managed files and is exported as
-`UV_PROJECT`, so the source checkout does not need copies. On every workspace
-start, `workspace-startup` performs the locked offline sync into the persistent
-`/home/coder/.venv`. The image exports that path as `UV_PROJECT_ENVIRONMENT`
-and `VIRTUAL_ENV` and places its `bin` first on `PATH`, so the Coder agent,
-code-server, SSH, and terminals use it immediately. OCI labels record the
-image's SemVer release; the `sha-<commit>` tag provides source traceability,
-and consumers use `:<version>@sha256:<digest>` references so the
-operator-facing version never weakens the immutable identity.
+Every Python workspace creates its persistent `/home/coder/.venv` on first
+start, exports it as `VIRTUAL_ENV`, and places its `bin` first on `PATH`, so the
+Coder agent, code-server, SSH, and terminals use it immediately. For managed
+projects, `UV_OFFLINE=true`, `UV_PYTHON_DOWNLOADS=never`, and `UV_LINK_MODE=copy`
+prevent public downloads and make the read-only image cache usable.
+`/opt/project-config` contains the two managed files and is exported as
+`UV_PROJECT`, so the source checkout does not need copies. On every start,
+`workspace-startup` performs the locked offline sync into the same environment.
+OCI labels record the image's SemVer release; the `sha-<commit>` tag provides
+source traceability, and consumers use `:<version>@sha256:<digest>` references
+so the operator-facing version never weakens the immutable identity.
 
 ## Updating project dependencies
 

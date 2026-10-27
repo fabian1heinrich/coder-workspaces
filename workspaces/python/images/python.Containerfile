@@ -46,7 +46,10 @@ RUN test -x /usr/local/bin/workspace-startup
 ENV HOME=/home/coder \
     SHELL=/usr/bin/zsh \
     USER=coder \
-    LOGNAME=coder
+    LOGNAME=coder \
+    CODER_PYTHON_ENVIRONMENT=/home/coder/.venv \
+    VIRTUAL_ENV=/home/coder/.venv \
+    PATH="/home/coder/.venv/bin:${PATH}"
 
 USER coder
 WORKDIR /home/coder
@@ -89,9 +92,7 @@ RUN chmod -R a-w /opt/project-config \
 # on the persistent home volume. workspace-startup syncs it before the Coder
 # agent starts; every child process then sees the environment as active.
 ENV UV_PROJECT=/opt/project-config \
-    UV_PROJECT_ENVIRONMENT=/home/coder/.venv \
-    VIRTUAL_ENV=/home/coder/.venv \
-    PATH="/home/coder/.venv/bin:${PATH}"
+    UV_PROJECT_ENVIRONMENT=/home/coder/.venv
 
 USER 1000:1000
 WORKDIR /home/coder

@@ -63,15 +63,15 @@ constants:
   - name: CODE_SERVER_IMAGE
     value: "ghcr.io/fabian1heinrich/coder-workspaces/code-server:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:dd63e14c38e2a60b165f90b86d72c05ebf0faae2b54ce6cf38a30ec7c4bd84e1"
   - name: WORKSPACE_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:a60eada69bd2aa2117e0c40f0afaf1f9be667ad74f46d3182a85272a261ea295"
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:2c4c704290f1c687a5e70e73d2773f7f615e895f7452e672aaee5cdd968d172a"
   - name: K8S_WORKSPACE_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/k8s-workspace:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:4d8258488a49a6a205ff99adaa293f0dfc10c02a1b812cc0c5beda9ac871fbd3"
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/k8s-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:3ddf874c197a2b32d4528775b824c329fee2b7f15ce45ddc296a98bf159b61f1"
   - name: K8S_VSIX_IMAGE
     value: "ghcr.io/fabian1heinrich/coder-workspaces/k8s-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836"
   - name: DEJA_DOC_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/deja-doc:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:6cad2e90ed0fc00a4287e53687b3e5fc6551e6aa35f5bb99f76ea9040d7931b2"
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/deja-doc:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:c7a2ea6b2bb40a33a4cb26825d4beb747451dcd8e9017b0a5ea21370bdf8b270"
   - name: DUPE_TROOPER_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/dupe-trooper:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:cf9abbef2aad9cf75579c22cb821f01b322ec296624eedfa6fd47b8e5306ecd2"
+    value: "ghcr.io/fabian1heinrich/coder-workspaces/dupe-trooper:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:613362f1d1dd6cb233d311a579895878af46a58f7075268870914e8dbbcff6ca"
   - name: VSIX_IMAGE
     value: "ghcr.io/fabian1heinrich/coder-workspaces/python-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:c16f4cf49bdaf1136e78b0cd7e05f78ec72909bce78502fb5fa09ea01ee047cd"
 
@@ -187,11 +187,11 @@ components:
     images:
       - ghcr.io/fabian1heinrich/coder-workspaces/publisher:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:9ac40c87c7e5ffdcda2ff8aa2bf02f7a310bb0f8bd4061a73c5bc11bb5e4ba37
       - ghcr.io/fabian1heinrich/coder-workspaces/code-server:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:dd63e14c38e2a60b165f90b86d72c05ebf0faae2b54ce6cf38a30ec7c4bd84e1
-      - ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:a60eada69bd2aa2117e0c40f0afaf1f9be667ad74f46d3182a85272a261ea295
-      - ghcr.io/fabian1heinrich/coder-workspaces/k8s-workspace:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:4d8258488a49a6a205ff99adaa293f0dfc10c02a1b812cc0c5beda9ac871fbd3
+      - ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:2c4c704290f1c687a5e70e73d2773f7f615e895f7452e672aaee5cdd968d172a
+      - ghcr.io/fabian1heinrich/coder-workspaces/k8s-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:3ddf874c197a2b32d4528775b824c329fee2b7f15ce45ddc296a98bf159b61f1
       - ghcr.io/fabian1heinrich/coder-workspaces/k8s-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836
-      - ghcr.io/fabian1heinrich/coder-workspaces/dupe-trooper:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:cf9abbef2aad9cf75579c22cb821f01b322ec296624eedfa6fd47b8e5306ecd2
-      - ghcr.io/fabian1heinrich/coder-workspaces/deja-doc:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:6cad2e90ed0fc00a4287e53687b3e5fc6551e6aa35f5bb99f76ea9040d7931b2
+      - ghcr.io/fabian1heinrich/coder-workspaces/dupe-trooper:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:613362f1d1dd6cb233d311a579895878af46a58f7075268870914e8dbbcff6ca
+      - ghcr.io/fabian1heinrich/coder-workspaces/deja-doc:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:c7a2ea6b2bb40a33a4cb26825d4beb747451dcd8e9017b0a5ea21370bdf8b270
       - ghcr.io/fabian1heinrich/coder-workspaces/python-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:c16f4cf49bdaf1136e78b0cd7e05f78ec72909bce78502fb5fa09ea01ee047cd
     repos:
       - https://github.com/fabian1heinrich/uv-devcontainer.git@e637e71ed9bfcd2a2181c0b0c8d3050f1beb8483

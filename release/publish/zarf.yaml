@@ -67,9 +67,9 @@ constants:
   - name: PUBLISHER_IMAGE
     value: "fabian1heinrich/coder-workspaces/publisher:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:9ac40c87c7e5ffdcda2ff8aa2bf02f7a310bb0f8bd4061a73c5bc11bb5e4ba37"
   - name: WORKSPACE_IMAGE
-    value: "fabian1heinrich/coder-workspaces/python-workspace:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:a60eada69bd2aa2117e0c40f0afaf1f9be667ad74f46d3182a85272a261ea295"
+    value: "fabian1heinrich/coder-workspaces/python-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:2c4c704290f1c687a5e70e73d2773f7f615e895f7452e672aaee5cdd968d172a"
   - name: K8S_WORKSPACE_IMAGE
-    value: "fabian1heinrich/coder-workspaces/k8s-workspace:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:4d8258488a49a6a205ff99adaa293f0dfc10c02a1b812cc0c5beda9ac871fbd3"
+    value: "fabian1heinrich/coder-workspaces/k8s-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:3ddf874c197a2b32d4528775b824c329fee2b7f15ce45ddc296a98bf159b61f1"
   - name: K8S_VSIX_IMAGE
     value: "fabian1heinrich/coder-workspaces/k8s-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836"
   - name: CODE_SERVER_IMAGE

@@ -36,10 +36,11 @@ lists. The build and CI matrix follow from the catalog.
   persistent home disk is an independent, increase-only setting.
 - code-server, the web terminal, and SSH start in the selected repository, or
   `/home/coder` when none is selected.
-- A managed project starts with its locked `/home/coder/.venv` synchronized and
-  active. Its `pyproject.toml` and `uv.lock` remain immutable at
-  `/opt/project-config`; they do not need to exist in or be uploaded to the
-  source checkout. `uv` uses that config automatically.
+- Every Python workspace starts with its persistent `/home/coder/.venv` active.
+  A managed project synchronizes its locked dependencies into that environment;
+  its `pyproject.toml` and `uv.lock` remain immutable at `/opt/project-config`
+  and do not need to exist in or be uploaded to the source checkout. `uv` uses
+  that config automatically.
 
 The published `git_auth_mode` selects anonymous access, a generic Kubernetes
 Secret, or Coder external auth. No option is tied to a particular Git service
