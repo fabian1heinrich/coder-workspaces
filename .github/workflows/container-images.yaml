@@ -57,12 +57,20 @@ jobs:
     permissions:
       contents: read
     outputs:
+      has_images: ${{ steps.matrix.outputs.has_images }}
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - name: Derive the image matrix from the project catalog
+        with:
+          fetch-depth: 0
+      - name: Derive the affected image matrix
         id: matrix
         shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
           base='[
@@ -85,14 +93,102 @@ jobs:
               workspace: true
             }]' workspaces/python/projects.json
           )"
-          matrix="$(
-            jq -cn --argjson base "$base" --argjson projects "$projects" \
-              '{include: ($base + $projects)}'
+
+          all="$(jq -cn --argjson base "$base" --argjson projects "$projects" '$base + $projects')"
+          declare -A wanted=()
+
+          want() {
+            wanted["$1"]=1
+          }
+
+          want_projects() {
+            while IFS= read -r project; do
+              want "$project"
+            done < <(jq -r '.[].image' <<< "$projects")
+          }
+
+          if test "$EVENT_NAME" = workflow_dispatch; then
+            while IFS= read -r image; do
+              want "$image"
+            done < <(jq -r '.[].image' <<< "$all")
+          else
+            case "$EVENT_NAME" in
+              pull_request) compare_sha="$PULL_REQUEST_BASE_SHA" ;;
+              push) compare_sha="$BEFORE_SHA" ;;
+              *) compare_sha= ;;
+            esac
+
+            if [[ ! "$compare_sha" =~ ^[0-9a-f]{40}$ ]] ||
+              test "$compare_sha" = 0000000000000000000000000000000000000000
+            then
+              while IFS= read -r image; do
+                want "$image"
+              done < <(jq -r '.[].image' <<< "$all")
+            else
+              while IFS= read -r path; do
+                case "$path" in
+                  coder.Containerfile)
+                    want coder
+                    ;;
+                  publisher.Containerfile)
+                    want publisher
+                    ;;
+                  modules/Containerfile|modules/modules.lock|modules/workspace-pod/*.tf)
+                    want coder-modules
+                    ;;
+                  workspaces/workspace-startup.sh)
+                    want python-workspace
+                    want k8s-workspace
+                    want_projects
+                    ;;
+                  workspaces/python/images/python.Containerfile)
+                    want python-workspace
+                    want_projects
+                    ;;
+                  workspaces/python/images/code-server.Containerfile)
+                    want code-server
+                    ;;
+                  workspaces/python/images/*/pyproject.toml|workspaces/python/images/*/uv.lock)
+                    project="${path#workspaces/python/images/}"
+                    project="${project%%/*}"
+                    if jq -e --arg project "$project" \
+                      'any(.[]; .image == $project)' <<< "$projects" >/dev/null
+                    then
+                      want "$project"
+                    fi
+                    ;;
+                  workspaces/python/extensions/python-extensions.Containerfile|workspaces/python/extensions/python-extensions.lock)
+                    want python-vsix
+                    ;;
+                  workspaces/k8s-dev/image/Containerfile)
+                    want k8s-workspace
+                    ;;
+                  workspaces/k8s-dev/extensions/k8s-extensions.Containerfile|workspaces/k8s-dev/extensions/k8s-extensions.lock)
+                    want k8s-vsix
+                    ;;
+                esac
+              done < <(git diff --name-only "$compare_sha" "$HEAD_SHA")
+            fi
+          fi
+
+          names="$(
+            for image in "${!wanted[@]}"; do
+              printf '%s\n' "$image"
+            done | jq -Rsc 'split("\n") | map(select(length > 0))'
           )"
+          matrix="$(
+            jq -cn --argjson all "$all" --argjson names "$names" \
+              '{include: [$all[] | select(.image as $image | $names | index($image))]}'
+          )"
+          if jq -e '.include | length > 0' <<< "$matrix" >/dev/null; then
+            printf 'has_images=true\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'has_images=false\n' >> "$GITHUB_OUTPUT"
+          fi
           printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
 
   validate:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && needs.plan.outputs.has_images == 'true'
     name: Build ${{ matrix.image }}
     needs: plan
     runs-on: ubuntu-24.04
@@ -122,7 +218,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
   publish:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && needs.plan.outputs.has_images == 'true'
     name: Publish ${{ matrix.image }}
     needs: plan
     runs-on: ubuntu-24.04
