@@ -21,10 +21,12 @@ workspace image. Startup never contacts package managers, extension
 marketplaces, or public artifact registries.
 
 Startup is `workspace-startup` from the workspace image, not shell embedded in
-the template, and it does one thing: reconcile the approved extension set.
-Extensions are platform state, so the set is rebuilt from `/opt/vsix` whenever
-that payload changes and left untouched when it has not, which keeps a
-withdrawn VSIX from surviving in the persistent home directory.
+the template. It reconciles the approved extension set and, when the image
+contains a managed Python project, materializes its locked environment before
+the Coder agent starts. Extensions are platform state, so the set is rebuilt
+from `/opt/vsix` whenever that payload changes and left untouched when it has
+not, which keeps a withdrawn VSIX from surviving in the persistent home
+directory.
 
 Repository authentication is deployment-owned. `git_auth_mode` explicitly
 selects `anonymous`, `secret`, or `external-auth`. Secret mode consumes a
