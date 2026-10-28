@@ -23,4 +23,4 @@ crash.*.log
 
 .DS_Store
 zarf-config.yaml
-!release/airgapped/zarf-config.yaml
+!release/deploy/zarf-config.yaml

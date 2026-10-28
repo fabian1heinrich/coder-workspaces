@@ -61,7 +61,7 @@ package-dev-local:
       name="${pair#*:}"
       args+=(--set "${pair%:*}_IMAGE=registry.invalid/fabian1heinrich/coder-workspaces/$name@$(digest "$name")")
     done
-    zarf package create dev/local "${args[@]}" --confirm --output {{ quote(build_dir) }}
+    zarf package create dev/zarf.yaml "${args[@]}" --confirm --output {{ quote(build_dir) }}
 
 [private]
 _build-images mode:
@@ -112,20 +112,20 @@ _package-production source:
     bundle="$build_path/releases/$release"
     mkdir -p "$(dirname "$bundle")"
     mkdir "$bundle" # Never overwrite a release, including one built from another source.
-    cp release/airgapped/{Justfile,README.md,.envrc,.env.example,zarf-config.yaml} "$bundle/"
+    cp release/deploy/{Justfile,README.md,.envrc,.env.example,zarf-config.yaml} "$bundle/"
     printf 'release_id=%s\ngit_revision=%s\nimage_source=%s\n' "$release" "$revision" {{ quote(source) }} > "$bundle/RELEASE-METADATA"
-    image_package=release/images
+    image_package=release/images-registry.yaml
     registry_args=(--registry-override registry.invalid=ghcr.io)
     args=(--set "RELEASE_ID=$release")
     if test {{ quote(source) }} = local; then
       just _build-images production
-      image_package=release/images/local
+      image_package=release/images-local.yaml
       registry_args=()
       args+=(--set BUILD_DIR={{ quote(build_dir) }})
     fi
     # The mirror package owns the published pins. The publication package and
     # deployment config receive those same pins, or the local digests.
-    references="$(zarf tools yq -r '.components[].images[]' release/images/zarf.yaml)"
+    references="$(zarf tools yq -r '.components[].images[]' release/images-registry.yaml)"
     while IFS= read -r reference; do
       reference="${reference#registry.invalid/}"
       name="${reference##*/}"
@@ -146,7 +146,7 @@ _package-production source:
     done <<< "$references"
     zarf package create "$image_package" --architecture amd64 \
       "${registry_args[@]}" --output "$bundle" "${args[@]}" --confirm
-    zarf package create release/publish --architecture amd64 --output "$bundle" "${args[@]}" --confirm
+    zarf package create release/publish.yaml --architecture amd64 --output "$bundle" "${args[@]}" --confirm
     (cd "$bundle" && find . -type f ! -name SHA256SUMS -exec sha256sum {} + | sort -k2 > SHA256SUMS)
     printf 'Release: %s\n' "$bundle"
 

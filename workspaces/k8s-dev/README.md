@@ -10,7 +10,7 @@ digest or checksum and verifies the non-root `coder` account contract.
 
 Use `just package-dev-local` or `just package-production-local` to build and
 package this image. CI publishes `sha-<commit>` traceability tags and SemVer
-aliases. Update its production pin in `release/images/zarf.yaml` after
+aliases. Update its production pin in `release/images-registry.yaml` after
 publishing; registry packaging passes that reference to the publisher.
 
 To upgrade the base, update its exact release tag and multi-architecture digest
@@ -26,7 +26,7 @@ storage, rebuilding the set only when the payload digest changes.
 
 When changing the approved extensions, update their versions, URLs, and
 checksums in the lock file. After CI publishes the new payload, update its
-production image pin in `release/images/zarf.yaml`.
+production image pin in `release/images-registry.yaml`.
 
 ## Cluster access
 

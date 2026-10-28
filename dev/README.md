@@ -1,7 +1,8 @@
 # Development package
 
-`local/zarf.yaml` packages locally built OCI images and imports shared platform
-components from `zarf.yaml`. Run from the repository root with direnv loaded.
+`zarf.yaml` packages the complete local platform and locally built OCI images.
+`publisher/` configures the shared template publisher for development.
+Run from the repository root with direnv loaded.
 
 ```sh
 just create-kind-cluster

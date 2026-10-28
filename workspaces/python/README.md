@@ -28,10 +28,10 @@ To add a project:
    builds and the CI matrix follow automatically.
 2. Add its image/repository variables in `variables.tf`, its profile in
    `locals.tf`, and the matching entries in both publisher overlays.
-3. Wire its image into `dev/local/zarf.yaml`, both production image package
-   definitions, and the image argument/config handling in `Justfile`. Add its
-   deployment inputs to `dev/zarf.yaml`, `release/publish/zarf.yaml`, and
-   `release/airgapped/zarf-config.yaml`.
+3. Wire its image into `dev/zarf.yaml`, `release/images-registry.yaml`,
+   `release/images-local.yaml`, and the image argument/config handling in
+   `Justfile`. Add its deployment inputs to `dev/zarf.yaml`,
+   `release/publish.yaml`, and `release/deploy/zarf-config.yaml`.
 
 A catalog entry alone does not enable a project in a deployed template.
 

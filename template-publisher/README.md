@@ -34,8 +34,8 @@ Both packages wait for the Job's `Complete=True` condition before finishing
 deployment. The native Zarf wait allows 11 minutes, covering the Job's
 10-minute deadline; a running or failed Job cannot satisfy it.
 
-The local overlay is `dev/template-publisher/`; the production overlay is
-`release/publish/manifests/`. Local development owns its publisher namespace,
+The local overlay is `dev/publisher/`; the production overlay is
+`release/publisher/`. Local development owns its publisher namespace,
 while production requires the consuming platform to create the selected
 publisher namespace. The publisher namespace is independent of the workspace
 namespace.

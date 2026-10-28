@@ -5,13 +5,21 @@ an existing registry; `coder-workspaces-publish` publishes both templates into
 an existing Coder Community deployment. Only the latter is deployed, with
 `--connected` so Zarf preserves the internal image references.
 
+| Path | Responsibility |
+| --- | --- |
+| `images-registry.yaml` | Mirror package using published, digest-pinned images |
+| `images-local.yaml` | Mirror package using locally built OCI archives |
+| `publish.yaml` | Template publication package |
+| `publisher/` | Production publisher overlay |
+| `deploy/` | Deployment files copied into each release bundle |
+
 ## Build
 
 Choose one source, from a clean committed checkout:
 
 | Command                            | Image source                                           |
 | ---------------------------------- | ------------------------------------------------------ |
-| `just package-production-registry` | Published digests in `images/zarf.yaml`                |
+| `just package-production-registry` | Published digests in `images-registry.yaml`            |
 | `just package-production-local`    | Images built from this checkout, saved as OCI archives |
 
 Both produce `$BUILD_DIR/releases/YYYY.MM.DD-g<12-character-sha>` with the two
@@ -37,16 +45,18 @@ under the destination, regenerate checksums for the copied files, and refuse
 to overwrite an existing directory. If a copy fails, remove only that incomplete
 destination before retrying. `RELEASE_DESTINATION` can also be set in `.env`.
 
-The image package owns the production pins. Packaging feeds those same
+`images-registry.yaml` owns the production pins. Packaging feeds those same
 references into publication and fills the project images in `zarf-config.yaml`.
 Local builds use the same repository paths and their actual archive digests.
 No registry push is required to build local production media.
+Preserve old digests while any template revision, package, release, or workspace
+references them.
 
 For a registry-based release containing image changes:
 
 1. Merge the image sources and wait for the successful `main` image workflow.
 2. Copy the changed images' references from that run's Actions summary into
-   `images/zarf.yaml`, replacing only `ghcr.io` with the package's logical
+   `images-registry.yaml`, replacing only `ghcr.io` with the package's logical
    registry `registry.invalid`. Commit the pin changes; keep unchanged pins.
 3. Build from that clean commit with `just package-production-registry`.
 
@@ -57,7 +67,7 @@ remain independent; packaging does not bump them.
 
 ## Publish
 
-Follow the [copied release instructions](airgapped/README.md). The shipped
+Follow the [copied release instructions](deploy/README.md). The shipped
 `zarf-config.yaml` supplies the deployment inputs. Pass your manually created
 Coder token with `--set-variables CODER_TOKEN=...`, or as `ZARF_VAR_CODER_TOKEN`
 to `just publish`, which forwards it to that flag. Keep the token out of config

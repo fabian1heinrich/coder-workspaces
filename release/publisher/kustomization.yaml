@@ -4,10 +4,10 @@ namespace: coder-template-publisher
 
 resources:
   - auth-secret.yaml
-  - ../../../modules/workspace-pod
-  - ../../../template-publisher/base
-  - ../../../workspaces/k8s-dev
-  - ../../../workspaces/python
+  - ../../modules/workspace-pod
+  - ../../template-publisher/base
+  - ../../workspaces/k8s-dev
+  - ../../workspaces/python
 
 configMapGenerator:
   - name: template-publisher-environment

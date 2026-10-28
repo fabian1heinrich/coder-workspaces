@@ -103,7 +103,7 @@ components:
       - name: coder-workspace-template-publisher
         kustomizeAllowAnyDirectory: true
         kustomizations:
-          - manifests
+          - publisher
     healthChecks:
       - name: template-publisher
         namespace: coder-template-publisher
@@ -111,4 +111,4 @@ components:
         kind: Job
 
 documentation:
-  readme: ../README.md
+  readme: README.md

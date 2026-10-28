@@ -53,14 +53,17 @@ Keep these layers separate and independently versioned:
   name a version after the hash of the template files and published variables.
   Do not reintroduce a state backend, lock, or resource import. Credentials
   remain environment-owned.
-- Distribution: `dev/local/` deploys the complete local platform from locally
-  built OCI archives and imports shared components from `dev/`. Production
+- Distribution: `dev/zarf.yaml` deploys the complete local platform from locally
+  built OCI archives, with its publisher overlay in `dev/publisher/`. Production
   packaging supports published digest-pinned images or local OCI archives.
   Keep those three packaging entry points in the root `Justfile`.
-- Production: `release/images/` is mirror-only; `release/publish/` is deployed
+- Production: `release/images-registry.yaml` and `release/images-local.yaml`
+  are mirror-only; `release/publish.yaml` is deployed
   with `zarf package deploy --connected` so independently mirrored image
   references are not imported or rewritten, and carries the publisher script,
-  its Job and identity, and the template payload. Do not reintroduce Flux
+  its Job and identity, and the template payload. Its overlay is in
+  `release/publisher/`; `release/deploy/` supplies the files copied onto release
+  media. Do not reintroduce Flux
   objects, a Flux OCI source, or `${}` substitution. Keep the fixed namespace,
   pull Secret, Git auth, and branch contract in the templates and manifests;
   expose only deployment-specific values as Zarf variables. The publishing

@@ -11,7 +11,7 @@ Zarf; workspace state persists under `/home/coder`.
 | [`modules/`](modules/README.md)                       | Pinned Coder modules packaged as one OCI image                    |
 | [`workspaces/`](workspaces/README.md)                 | Runtime images and the `python-workspace` and `k8s-dev` templates |
 | [`template-publisher/`](template-publisher/README.md) | Publisher script and generic Coder CLI runtime                    |
-| [`dev/`](dev/README.md)                               | Local package, publisher overlay, control plane, and Helm values  |
+| [`dev/`](dev/README.md)                               | Complete local package in `zarf.yaml`, control plane, and publisher overlay |
 | [`release/`](release/README.md)                       | Production template publication and image mirror packages         |
 
 ## Requirements
@@ -77,6 +77,6 @@ Pull requests build only; pushes and manual runs on `main` also publish.
 The same build options apply to both. Locked `uv sync` inside project builds
 rejects stale lockfiles; CI does not rewrite branches or need a lockfile bot.
 Published references appear in the Actions summary. Copy changed digests into
-`release/images/zarf.yaml` before packaging from the registry. Templates
+`release/images-registry.yaml` before packaging from the registry. Templates
 require the publisher to supply image references; they have no public-registry
 fallbacks. Template and publisher validation happens at publication.
