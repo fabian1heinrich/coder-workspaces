@@ -1,24 +1,27 @@
 # Air-gapped Coder workspace release
 
-Run from the copied `coder-workspaces` directory. The images archive is a
-mirror archive and is never deployed; the publication package is deployed
-against the existing Coder deployment. The consuming platform provides registry
-credentials and the publication values.
+Run from this copied release directory. The host needs Bash, Just (optional),
+direnv, Zarf 0.83 or later, kubectl, base64, and sha256sum. The platform must
+already provide the publisher namespace and its `zot-reader` registry Secret,
+and mount the module image recorded in `RELEASE-METADATA` on Coder.
 
-The host needs Bash, Just, direnv, Zarf, `kubectl`, jq, base64, and sha256sum.
-
-Prepare the environment and verify the copied release:
+## Configure and mirror
 
 ```sh
-install -m 600 .env.example .env
+sha256sum --check SHA256SUMS
+cp .env.example .env
 $EDITOR .env
 direnv allow
-test -f "$KUBECONFIG"
-sha256sum --check SHA256SUMS
-kubectl -n coder-template-publisher get secret/zot-reader
 ```
 
-When an image changed, mirror images before publishing:
+The shipped `zarf-config.yaml` contains all non-secret publication inputs,
+including the project image digests filled in during packaging. Use it directly;
+edit it only when the deployment values differ. Verify checksums before editing.
+If you change `REGISTRY`, also change the registry hostname in the project image
+references. An empty project image disables it. Never put a Coder API token in
+either configuration file.
+
+Mirror the images when their digests are not already present:
 
 ```sh
 SSL_CERT_FILE="$REGISTRY_CA_FILE" \
@@ -28,54 +31,43 @@ ZARF_INIT_REGISTRY_PUSH_PASSWORD="$(
     -o "jsonpath={.data.$REGISTRY_WRITER_SECRET_KEY}" | base64 --decode
 )" \
 zarf package mirror-resources \
-  ./zarf-package-coder-workspaces-image-mirror-amd64-*.tar.zst \
-  --registry-url "$ZARF_VAR_REGISTRY" \
+  ./zarf-package-coder-workspaces-images-amd64-*.tar.zst \
+  --registry-url "$(zarf tools yq -r '.package.deploy.set.REGISTRY' zarf-config.yaml)" \
   --registry-push-username "$REGISTRY_PUSH_USERNAME" \
-  --components=workspace-runtime,coder-modules,workspace-tooling,project-images,publisher-runtime \
-  --images \
-  --no-img-checksum \
-  --confirm
+  --images --no-img-checksum --confirm
 ```
 
-After any required mirroring, create a short-lived API token manually in Coder
-from an account with Template Admin or Owner rights. Keep it out of `.env` and
-shell history. Run the publication recipe, enter the token at its hidden prompt,
-and revoke it in Coder immediately afterward. Paste the token once and press
-Enter; the terminal intentionally displays no characters while reading it.
+The images package is mirror-only. Never deploy it.
 
-```sh
-just publish
+## Publish
+
+Create a short-lived API token manually in Coder with Template Admin or Owner
+rights. In Bash, read it without echoing or recording its value in history:
+
+```bash
+read -r -s -p 'Coder API token: ' coder_token; printf '\n'
+zarf package deploy ./zarf-package-coder-workspaces-publish-amd64-*.tar.zst \
+  --connected --confirm --set-variables "CODER_TOKEN=$coder_token"
+unset coder_token
 ```
 
-`just publish` reads the token inside its Bash process and maps it with the
-other `ZARF_VAR_*` inputs into Zarf's
-`package.deploy.set` configuration before running `zarf package deploy
---connected --confirm`. Zarf exposes deployment variables to package actions
-with `ZARF_VAR_*` names, but does not consume arbitrary `ZARF_VAR_*` shell
-variables as deployment inputs. Calling the raw deploy command with `--confirm`
-would therefore skip prompts and use empty values.
+The equivalent convenience command is
+`ZARF_VAR_CODER_TOKEN="$coder_token" just publish`. Revoke the API token in
+Coder immediately after deployment, whether deployment succeeds or fails.
 
-The publication package first verifies that `zot-reader` contains credentials
-for the configured registry and that the completed Coder rollout declares the
-expected digest-pinned module image at `/opt/coder-modules`. This check reads
-the Deployment specification and does not require `pods/exec` access. It then
-creates the credential Secret imperatively, outside its rendered manifests, and
-runs the publisher Job as a Zarf health check. Success deletes the Secret after
-the Job health check through Zarf's `onSuccess` action; an `after` action would
-run immediately after applying the Job and is therefore intentionally not used.
-Failure deletes the Job before deleting the Secret, so Kubernetes never retains
-a Pod that references a removed credential. If Kubernetes cannot confirm Job
-deletion, cleanup stops and preserves the Secret for the still-existing Job.
-The token is therefore absent from Helm release data. Revoking the Coder API
-token remains an operator action. A rejected token, an unreachable Coder
-deployment, or a template that fails to build fails the deploy in front of you.
-Follow the Job's output while the deployment is active with:
+`just publish` forwards its `ZARF_VAR_CODER_TOKEN` environment variable through
+`--set-variables`. The package declares `CODER_TOKEN` as sensitive and requires
+a non-empty value. Zarf reads the other inputs from `zarf-config.yaml`.
 
-```sh
-kubectl -n coder-template-publisher logs --follow job/template-publisher
-```
+The package applies `coder-template-publisher-auth` as a regular Secret and
+waits for the Job to complete. The Secret and its rendered value remain in the
+cluster and Helm release history; `sensitive` suppresses logging, not storage.
+Revoke the token in Coder after every attempt. Publisher logs are available with
+`kubectl -n coder-template-publisher logs -f job/template-publisher`.
+`zot-reader` remains platform-owned and is never created from the Coder token.
 
-Publication is idempotent: unchanged template content and unchanged image
-digests leave the active template version in place. To roll back, publish from
-an older copied release; rollback does not reverse prior Coder API changes, and
-existing workspaces keep the template version they were built from.
+Run one publication at a time. Each deployment replaces the previous Job and
+updates the Secret with the supplied token. Retry with a fresh token; unchanged
+template content and variables reuse the same version. Publishing an older
+release reactivates its template versions; existing workspaces retain their
+versions until explicitly updated.

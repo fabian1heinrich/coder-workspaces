@@ -7,23 +7,25 @@ One directory per entry in
 [`../projects.json`](../projects.json) contains only that project's current
 `pyproject.toml` and `uv.lock`; application source and project virtual
 environments never enter an image. The build and the CI matrix iterate the
-catalog, so a new project needs its catalog entry, this directory, and its
-image in the transport package lists.
+catalog; template and package wiring remains explicit. Follow the
+[project addition steps](../README.md) when adding an entry.
 
 The runtime derives from the digest-pinned Microsoft Python 3.13 Trixie dev
 container. To upgrade it, update the exact `FROM` reference and matching
 source-image label together. Build assertions preserve the `coder` account
 contract.
 
-Each project pins Python and all dependencies. The project target copies the
-digest-pinned uv 0.8.15 binary, performs a locked sync without installing the
-project, and stores the cache in `/opt/uv-cache`.
+The shared runtime includes digest-pinned uv 0.8.15, including for the sandbox.
+Each project pins Python and all dependencies, performs a locked sync without
+installing the project, and stores its offline cache in `/opt/uv-cache`.
 
 Every Python workspace creates its persistent `/home/coder/.venv` on first
 start, exports it as `VIRTUAL_ENV`, and places its `bin` first on `PATH`, so the
-Coder agent, code-server, SSH, and terminals use it immediately. For managed
-projects, `UV_OFFLINE=true`, `UV_PYTHON_DOWNLOADS=never`, and `UV_LINK_MODE=copy`
-prevent public downloads and make the read-only image cache usable.
+Coder agent and its children inherit it. Image-owned Bash and Zsh hooks also
+source the environment's activation script when a shell opens, even with an
+existing home volume. User dotfiles can still deliberately override it.
+`UV_OFFLINE=true` and `UV_PYTHON_DOWNLOADS=never` prevent public downloads;
+managed projects also use `UV_LINK_MODE=copy` for the preloaded cache.
 `/opt/project-config` contains the two managed files and is exported as
 `UV_PROJECT`, so the source checkout does not need copies. On every start,
 `workspace-startup` performs the locked offline sync into the same environment.
@@ -34,13 +36,10 @@ so the operator-facing version never weakens the immutable identity.
 ## Updating project dependencies
 
 Use exact versions under `[project].dependencies` and `[dependency-groups]`.
-Pull-request CI uses the pinned uv image to regenerate and commit `uv.lock`; do
-not edit it manually.
-
-The lockfile workflow requires a GitHub App with Contents read/write permission.
-Set `PYTHON_LOCK_BOT_CLIENT_ID` as a repository variable and
-`PYTHON_LOCK_BOT_PRIVATE_KEY` as an Actions secret. Fork pull requests must
-include their lockfile update.
+Regenerate `uv.lock` with uv 0.8.15 on a connected host in the project directory,
+then commit it alongside `pyproject.toml`; do not edit the lockfile by hand.
+The image build's `uv sync --locked` rejects inconsistent inputs. CI no longer
+requires a GitHub App or pushes lockfile commits into pull requests.
 
 CI publishes `sha-<commit>` traceability tags and mutable SemVer aliases for
 each image. Consumers retain the readable version beside the immutable digest.

@@ -47,15 +47,16 @@ Keep these layers separate and independently versioned:
   `workspace-pod`; never duplicate a pod spec between templates.
 - Projects: `workspaces/python/projects.json` is the single project catalog.
   The build, the CI matrix, and the template derive from it, and a deployment
-  enables entries through the digest-pinned `project_images` pairs.
+  enables entries through the per-project digest-pinned image variables.
 - Publishing: `template-publisher/` owns the publisher script and shared Job.
   Publish with the Coder CLI and keep publication stateless and idempotent:
   name a version after the hash of the template files and published variables.
   Do not reintroduce a state backend, lock, or resource import. Credentials
   remain environment-owned.
-- Distribution: self-contained packages under `dev/` deploy all or only
-  template components from either published, digest-pinned OCI images or local
-  OCI archives.
+- Distribution: `dev/local/` deploys the complete local platform from locally
+  built OCI archives and imports shared components from `dev/`. Production
+  packaging supports published digest-pinned images or local OCI archives.
+  Keep those three packaging entry points in the root `Justfile`.
 - Production: `release/images/` is mirror-only; `release/publish/` is deployed
   with `zarf package deploy --connected` so independently mirrored image
   references are not imported or rewritten, and carries the publisher script,
@@ -63,10 +64,14 @@ Keep these layers separate and independently versioned:
   objects, a Flux OCI source, or `${}` substitution. Keep the fixed namespace,
   pull Secret, Git auth, and branch contract in the templates and manifests;
   expose only deployment-specific values as Zarf variables. The publishing
-  token is created manually and supplied as `ZARF_VAR_CODER_TOKEN` for one
-  deployment. The package creates its Secret imperatively outside rendered
-  release data and removes it from the cluster afterwards. The operator revokes
-  the API token in Coder; never store it.
+  token is created manually and supplied through the sensitive `CODER_TOKEN`
+  deploy variable using `--set-variables`. The copied release's `just publish`
+  forwards `ZARF_VAR_CODER_TOKEN` from its environment to that flag. Non-secret
+  deployment values use native `zarf-config.yaml`. The package applies a regular
+  auth Secret and replaces the previous publisher Job on each deployment.
+  The token remains in the Secret and Helm release history; the operator revokes
+  it in Coder after every attempt. Never put token values in source, release
+  media, or configuration files. Do not add Secret cleanup hooks.
   The consuming platform owns the registry, Git access, project images, the
   resources required by the fixed contract, and mounting the mirrored Coder
   modules image at

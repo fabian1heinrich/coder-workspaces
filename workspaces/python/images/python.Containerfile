@@ -1,3 +1,4 @@
+# uv 0.8.15, shared by sandbox and managed project workspaces.
 FROM ghcr.io/astral-sh/uv@sha256:a5727064a0de127bdb7c9d3c1383f3a9ac307d9f2d8a391edc7896c54289ced0 AS uv
 
 FROM mcr.microsoft.com/devcontainers/python:3.2.6-3.13-trixie@sha256:5ea7e72d3c1beb6aefdfea8001483345c39af4898e22f2c543deb6a00802ede4 AS runtime
@@ -41,7 +42,14 @@ RUN set -eux; \
 COPY --chown=root:root --chmod=0555 \
     workspaces/workspace-startup.sh \
     /usr/local/bin/workspace-startup
-RUN test -x /usr/local/bin/workspace-startup
+COPY --from=uv --chmod=0555 /uv /uvx /usr/local/bin/
+COPY --chown=root:root --chmod=0444 \
+    workspaces/python/images/activate-venv.sh \
+    /etc/profile.d/coder-venv.sh
+# Login Bash reads profile.d; interactive Bash and Zsh also activate it.
+# Keep these hooks outside the PVC-backed home, including for existing homes.
+RUN printf '\n. /etc/profile.d/coder-venv.sh\n' >> /etc/bash.bashrc \
+    && printf '\n. /etc/profile.d/coder-venv.sh\n' >> /etc/zsh/zshrc
 
 ENV HOME=/home/coder \
     SHELL=/usr/bin/zsh \
@@ -49,6 +57,8 @@ ENV HOME=/home/coder \
     LOGNAME=coder \
     CODER_PYTHON_ENVIRONMENT=/home/coder/.venv \
     VIRTUAL_ENV=/home/coder/.venv \
+    UV_OFFLINE=true \
+    UV_PYTHON_DOWNLOADS=never \
     PATH="/home/coder/.venv/bin:${PATH}"
 
 USER coder
@@ -68,14 +78,11 @@ ARG IMAGE_VERSION=0.1.0
 
 USER root
 RUN install -d -o 1000 -g 1000 -m 0755 /opt/project-config /opt/uv-cache
-COPY --from=uv --chmod=0555 /uv /uvx /usr/local/bin/
 COPY --chown=1000:1000 --chmod=0444 workspaces/python/images/${PROJECT}/pyproject.toml workspaces/python/images/${PROJECT}/uv.lock /opt/project-config/
 
 ENV UV_CACHE_DIR=/opt/uv-cache \
     UV_LINK_MODE=copy \
-    UV_OFFLINE=true \
-    UV_PROJECT_ENVIRONMENT=.venv \
-    UV_PYTHON_DOWNLOADS=never
+    UV_PROJECT_ENVIRONMENT=.venv
 
 USER 1000:1000
 WORKDIR /opt/project-config

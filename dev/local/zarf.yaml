@@ -10,7 +10,7 @@ constants:
   - name: CODER_IMAGE_DIGEST
     value: "###ZARF_PKG_TMPL_CODER_IMAGE_DIGEST###"
   - name: CODER_IMAGE_REPOSITORY
-    value: "zarf.internal/coder-workspaces-coder@sha256"
+    value: "registry.invalid/fabian1heinrich/coder-workspaces/coder@sha256"
   - name: CODER_MODULES_IMAGE
     value: "###ZARF_PKG_TMPL_CODER_MODULES_IMAGE###"
   - name: PUBLISHER_IMAGE
@@ -34,48 +34,36 @@ components:
   - name: coder-images
     description: Locally built Coder Community control-plane image
     required: true
-    only:
-      flavor: full
     imageArchives:
-      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/coder-opentofu.oci.tar"
+      - path: "###ZARF_PKG_TMPL_BUILD_DIR###/coder.oci.tar"
         images:
-          - zarf.internal/coder-workspaces-coder:opentofu
+          - registry.invalid/fabian1heinrich/coder-workspaces/coder:local
 
   - name: opentofu-coder-modules
     description: Locally built read-only OpenTofu module payload
     required: true
-    only:
-      flavor: full
     imageArchives:
       - path: "###ZARF_PKG_TMPL_BUILD_DIR###/coder-modules.oci.tar"
         images:
-          - zarf.internal/coder-modules:0.1.0
+          - registry.invalid/fabian1heinrich/coder-workspaces/coder-modules:local
 
   - name: cnpg
     required: true
-    only:
-      flavor: full
     import:
       path: ..
 
   - name: postgres-connection
     required: true
-    only:
-      flavor: full
     import:
       path: ..
 
   - name: coder
     required: true
-    only:
-      flavor: full
     import:
       path: ..
 
   - name: coder-bootstrap
     required: true
-    only:
-      flavor: full
     import:
       path: ..
 
@@ -85,28 +73,28 @@ components:
     imageArchives:
       - path: "###ZARF_PKG_TMPL_BUILD_DIR###/publisher.oci.tar"
         images:
-          - zarf.internal/coder-workspaces-publisher:local
+          - registry.invalid/fabian1heinrich/coder-workspaces/publisher:local
       - path: "###ZARF_PKG_TMPL_BUILD_DIR###/code-server.oci.tar"
         images:
-          - zarf.internal/coder-workspaces-code-server:local
+          - registry.invalid/fabian1heinrich/coder-workspaces/code-server:local
       - path: "###ZARF_PKG_TMPL_BUILD_DIR###/python-workspace.oci.tar"
         images:
-          - zarf.internal/coder-workspaces-python-workspace:local
+          - registry.invalid/fabian1heinrich/coder-workspaces/python-workspace:local
       - path: "###ZARF_PKG_TMPL_BUILD_DIR###/k8s-workspace.oci.tar"
         images:
-          - zarf.internal/coder-workspaces-k8s-workspace:local
+          - registry.invalid/fabian1heinrich/coder-workspaces/k8s-workspace:local
       - path: "###ZARF_PKG_TMPL_BUILD_DIR###/k8s-vsix.oci.tar"
         images:
-          - zarf.internal/coder-workspaces-k8s-vsix:local
+          - registry.invalid/fabian1heinrich/coder-workspaces/k8s-vsix:local
       - path: "###ZARF_PKG_TMPL_BUILD_DIR###/dupe-trooper.oci.tar"
         images:
-          - zarf.internal/coder-workspaces-dupe-trooper:local
+          - registry.invalid/fabian1heinrich/coder-workspaces/dupe-trooper:local
       - path: "###ZARF_PKG_TMPL_BUILD_DIR###/deja-doc.oci.tar"
         images:
-          - zarf.internal/coder-workspaces-deja-doc:local
+          - registry.invalid/fabian1heinrich/coder-workspaces/deja-doc:local
       - path: "###ZARF_PKG_TMPL_BUILD_DIR###/python-vsix.oci.tar"
         images:
-          - zarf.internal/coder-workspaces-python-vsix:local
+          - registry.invalid/fabian1heinrich/coder-workspaces/python-vsix:local
     repos:
       - https://github.com/fabian1heinrich/uv-devcontainer.git@e637e71ed9bfcd2a2181c0b0c8d3050f1beb8483
       - https://github.com/fabian1heinrich/coder-dotfiles.git@4d8bd9bf877c32e257f671ab30c86e898261891e

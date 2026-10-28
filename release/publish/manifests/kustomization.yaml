@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: coder-template-publisher
 
 resources:
+  - auth-secret.yaml
   - ../../../modules/workspace-pod
   - ../../../template-publisher/base
   - ../../../workspaces/k8s-dev

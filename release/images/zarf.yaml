@@ -6,13 +6,14 @@ metadata:
   description: Mirror production Coder workspace and publisher images
   architecture: amd64
 
+# Runtime/project digests verified against Actions run 40536090561 (6732c3f).
 components:
   - name: workspace-runtime
     description: Python and Kubernetes operations workspace runtimes 0.1.0
     required: true
     images:
-      - registry.invalid/fabian1heinrich/coder-workspaces/python-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:2c4c704290f1c687a5e70e73d2773f7f615e895f7452e672aaee5cdd968d172a
-      - registry.invalid/fabian1heinrich/coder-workspaces/k8s-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:3ddf874c197a2b32d4528775b824c329fee2b7f15ce45ddc296a98bf159b61f1
+      - registry.invalid/fabian1heinrich/coder-workspaces/python-workspace:sha-6732c3fd1b4fe30680be4956ebe9901a97058aa6@sha256:37954a40fd65d61453492eb7aa0b9d66635c73af8e1537bc9a43f8129bec19cf
+      - registry.invalid/fabian1heinrich/coder-workspaces/k8s-workspace:sha-6732c3fd1b4fe30680be4956ebe9901a97058aa6@sha256:1cd00c86aa816097a5909361b88898498dd504f6c5eda46091543c9f92d007b6
 
   # Advance this image only when modules.lock or modules/Containerfile changes;
   # workspace-pod is bundled into each template. Templates resolve the pinned
@@ -38,8 +39,8 @@ components:
     description: Optional Python project environments 0.1.0
     required: true
     images:
-      - registry.invalid/fabian1heinrich/coder-workspaces/deja-doc:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:c7a2ea6b2bb40a33a4cb26825d4beb747451dcd8e9017b0a5ea21370bdf8b270
-      - registry.invalid/fabian1heinrich/coder-workspaces/dupe-trooper:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:613362f1d1dd6cb233d311a579895878af46a58f7075268870914e8dbbcff6ca
+      - registry.invalid/fabian1heinrich/coder-workspaces/deja-doc:sha-6732c3fd1b4fe30680be4956ebe9901a97058aa6@sha256:45bf39bfa234b49e84c962ac091e53aa120ff8d2623592b5ab60caa3306ba7ce
+      - registry.invalid/fabian1heinrich/coder-workspaces/dupe-trooper:sha-6732c3fd1b4fe30680be4956ebe9901a97058aa6@sha256:fc2c9207cefd1793a429207bde4d020768e29a568b8af427e8f6619646385ccc
 
   - name: publisher-runtime
     description: Offline Coder CLI template publisher runtime

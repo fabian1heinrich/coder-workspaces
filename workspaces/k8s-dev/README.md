@@ -8,10 +8,10 @@ code-server and approved extensions are separate read-only OCI image volumes.
 `image/Containerfile` pins the Trixie devcontainer and Kubernetes clients by
 digest or checksum and verifies the non-root `coder` account contract.
 
-Use `just build-template-artifacts` for the local OCI archive. The image
-workflow publishes `sha-<commit>` traceability tags and SemVer tags. After
-publishing a new version, update its tag-and-digest reference in the template
-publisher and its digest-only reference in each transport package.
+Use `just package-dev-local` or `just package-production-local` to build and
+package this image. CI publishes `sha-<commit>` traceability tags and SemVer
+aliases. Update its production pin in `release/images/zarf.yaml` after
+publishing; registry packaging passes that reference to the publisher.
 
 To upgrade the base, update its exact release tag and multi-architecture digest
 in both `FROM` instructions and the matching source-image label. To upgrade a
@@ -24,9 +24,9 @@ Red Hat YAML 2.0.0 from `extensions/k8s-extensions.lock`. The `k8s-vsix` image
 is mounted at `/opt/vsix`, and `workspace-startup` installs it into persistent
 storage, rebuilding the set only when the payload digest changes.
 
-After publishing a new `k8s-vsix` version, update its tag-and-digest reference
-and every transport-package digest together with each lock entry's version, URL,
-and checksum.
+When changing the approved extensions, update their versions, URLs, and
+checksums in the lock file. After CI publishes the new payload, update its
+production image pin in `release/images/zarf.yaml`.
 
 ## Cluster access
 

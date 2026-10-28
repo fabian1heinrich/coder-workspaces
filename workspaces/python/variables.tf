@@ -7,7 +7,6 @@ variable "namespace" {
 variable "sandbox_image" {
   type        = string
   description = "Default Python sandbox runtime in the deployment-owned registry, pinned by sha256 digest."
-  default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:2c4c704290f1c687a5e70e73d2773f7f615e895f7452e672aaee5cdd968d172a"
 
   validation {
     condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.sandbox_image))
@@ -62,7 +61,6 @@ variable "dupe_trooper_repository" {
 variable "vsix_image" {
   type        = string
   description = "Default Python VSIX image-volume payload in the deployment-owned registry, pinned by sha256 digest."
-  default     = "ghcr.io/fabian1heinrich/coder-workspaces/python-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:c16f4cf49bdaf1136e78b0cd7e05f78ec72909bce78502fb5fa09ea01ee047cd"
 
   validation {
     condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.vsix_image))
@@ -73,7 +71,6 @@ variable "vsix_image" {
 variable "code_server_image" {
   type        = string
   description = "Default code-server image-volume payload in the deployment-owned registry, pinned by sha256 digest."
-  default     = "ghcr.io/fabian1heinrich/coder-workspaces/code-server:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:dd63e14c38e2a60b165f90b86d72c05ebf0faae2b54ce6cf38a30ec7c4bd84e1"
 
   validation {
     condition     = can(regex("^[^[:space:]@]+@sha256:[0-9a-f]{64}$", var.code_server_image))

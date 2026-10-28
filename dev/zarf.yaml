@@ -1,9 +1,8 @@
 kind: ZarfPackageConfig
 
 metadata:
-  name: coder-workspaces-dev-registry
-  version: 0.1.0
-  description: Registry-backed Coder platform and workspace-template release
+  name: coder-workspaces-dev-components
+  description: Shared local Coder platform and template publisher components
   architecture: amd64
 
 variables:
@@ -51,60 +50,16 @@ variables:
     default: zarf-git-user/coder-dotfiles-3319437223
     prompt: false
 
-constants:
-  - name: CODER_IMAGE_DIGEST
-    value: "0cbe35abfbb7ba087fdd495f98b7c3a0a8c4d8dd92ea6ba8700eac32dd0f685c"
-  - name: CODER_IMAGE_REPOSITORY
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/coder:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256"
-  - name: CODER_MODULES_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/coder-modules:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:e4f10be5f9c6253c98ddce8d4f1b836c80463f78c1efcb8da0179955265136ba"
-  - name: PUBLISHER_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/publisher:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:9ac40c87c7e5ffdcda2ff8aa2bf02f7a310bb0f8bd4061a73c5bc11bb5e4ba37"
-  - name: CODE_SERVER_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/code-server:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:dd63e14c38e2a60b165f90b86d72c05ebf0faae2b54ce6cf38a30ec7c4bd84e1"
-  - name: WORKSPACE_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:2c4c704290f1c687a5e70e73d2773f7f615e895f7452e672aaee5cdd968d172a"
-  - name: K8S_WORKSPACE_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/k8s-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:3ddf874c197a2b32d4528775b824c329fee2b7f15ce45ddc296a98bf159b61f1"
-  - name: K8S_VSIX_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/k8s-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836"
-  - name: DEJA_DOC_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/deja-doc:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:c7a2ea6b2bb40a33a4cb26825d4beb747451dcd8e9017b0a5ea21370bdf8b270"
-  - name: DUPE_TROOPER_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/dupe-trooper:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:613362f1d1dd6cb233d311a579895878af46a58f7075268870914e8dbbcff6ca"
-  - name: VSIX_IMAGE
-    value: "ghcr.io/fabian1heinrich/coder-workspaces/python-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:c16f4cf49bdaf1136e78b0cd7e05f78ec72909bce78502fb5fa09ea01ee047cd"
-
 components:
-  - name: coder-images
-    description: Coder Community control-plane image
-    required: true
-    only:
-      flavor: full
-    images:
-      - ghcr.io/fabian1heinrich/coder-workspaces/coder:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:0cbe35abfbb7ba087fdd495f98b7c3a0a8c4d8dd92ea6ba8700eac32dd0f685c
-
-  - name: opentofu-coder-modules
-    description: Read-only OpenTofu module payload
-    required: true
-    only:
-      flavor: full
-    images:
-      - ghcr.io/fabian1heinrich/coder-workspaces/coder-modules:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:e4f10be5f9c6253c98ddce8d4f1b836c80463f78c1efcb8da0179955265136ba
-
   - name: cnpg
     description: Deploy CloudNativePG and the Coder PostgreSQL database
     required: true
-    only:
-      flavor: full
     import:
       url: oci://ghcr.io/fabian1heinrich/cnpg-zarf/cnpg:0.1.4@sha256:1d22fa46cf3f3e029b1399dfd598ac5bffe38d5a827977d1e828794f354b2edf
 
   - name: postgres-connection
     description: Provide Coder with the CNPG connection URL
     required: true
-    only:
-      flavor: full
     manifests:
       - name: coder-postgres-connection
         namespace: coder
@@ -114,8 +69,6 @@ components:
   - name: coder
     description: Deploy Coder Community with built-in offline provisioners
     required: true
-    only:
-      flavor: full
     healthChecks:
       - name: coder
         namespace: coder
@@ -140,8 +93,6 @@ components:
   - name: coder-bootstrap
     description: Create the initial Coder administrator and issue the template publisher credential
     required: true
-    only:
-      flavor: full
     actions:
       onDeploy:
         after:
@@ -179,24 +130,6 @@ components:
             description: Bootstrap the Coder administrator and template publisher credential
             mute: true
 
-  # Keep template transport here so this definition is the only local package
-  # entry point.
-  - name: template-artifacts
-    description: Transport the 0.1.0 workspace images, template runner, and Git repositories
-    required: true
-    images:
-      - ghcr.io/fabian1heinrich/coder-workspaces/publisher:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:9ac40c87c7e5ffdcda2ff8aa2bf02f7a310bb0f8bd4061a73c5bc11bb5e4ba37
-      - ghcr.io/fabian1heinrich/coder-workspaces/code-server:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:dd63e14c38e2a60b165f90b86d72c05ebf0faae2b54ce6cf38a30ec7c4bd84e1
-      - ghcr.io/fabian1heinrich/coder-workspaces/python-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:2c4c704290f1c687a5e70e73d2773f7f615e895f7452e672aaee5cdd968d172a
-      - ghcr.io/fabian1heinrich/coder-workspaces/k8s-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:3ddf874c197a2b32d4528775b824c329fee2b7f15ce45ddc296a98bf159b61f1
-      - ghcr.io/fabian1heinrich/coder-workspaces/k8s-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836
-      - ghcr.io/fabian1heinrich/coder-workspaces/dupe-trooper:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:613362f1d1dd6cb233d311a579895878af46a58f7075268870914e8dbbcff6ca
-      - ghcr.io/fabian1heinrich/coder-workspaces/deja-doc:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:c7a2ea6b2bb40a33a4cb26825d4beb747451dcd8e9017b0a5ea21370bdf8b270
-      - ghcr.io/fabian1heinrich/coder-workspaces/python-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:c16f4cf49bdaf1136e78b0cd7e05f78ec72909bce78502fb5fa09ea01ee047cd
-    repos:
-      - https://github.com/fabian1heinrich/uv-devcontainer.git@e637e71ed9bfcd2a2181c0b0c8d3050f1beb8483
-      - https://github.com/fabian1heinrich/coder-dotfiles.git@4d8bd9bf877c32e257f671ab30c86e898261891e
-
   - name: publish-template
     description: Publish the Coder workspace templates using artifacts already loaded into Zarf
     required: true
@@ -211,6 +144,16 @@ components:
                 --ignore-not-found --wait=true
             description: Prepare a fresh template publication Job
             mute: true
+        after:
+          # The generic Job health check also accepts running Jobs.
+          - wait:
+              cluster:
+                kind: Job
+                name: template-publisher
+                namespace: coder-template-publisher
+                condition: Complete=True
+            maxTotalSeconds: 660
+            description: Wait for successful template publication
     manifests:
       - name: coder-workspace-template-publisher
         namespace: coder-template-publisher

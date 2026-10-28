@@ -1,50 +1,10 @@
-# Publish templates with the deployment values loaded from .env by direnv.
+# Publish using zarf-config.yaml and the manually supplied, command-scoped token.
 publish:
-    #!/usr/bin/env -S direnv exec . bash
+    #!/usr/bin/env bash
     set -euo pipefail
-    : "${ZARF_VAR_REGISTRY:?Set ZARF_VAR_REGISTRY in .env}"
-
-    if test -z "${ZARF_VAR_CODER_TOKEN:-}"; then
-      test -r /dev/tty && test -w /dev/tty || {
-        echo "No terminal is available; supply ZARF_VAR_CODER_TOKEN through the process environment." >&2
-        exit 1
-      }
-      printf 'Coder API token (input hidden): ' >/dev/tty
-      IFS= read -r -s ZARF_VAR_CODER_TOKEN </dev/tty
-      printf '\n' >/dev/tty
-    fi
-    : "${ZARF_VAR_CODER_TOKEN:?The Coder API token cannot be empty}"
-
-    package="${PUBLISH_PACKAGE:-}"
-    if test -z "$package"; then
-      shopt -s nullglob
-      packages=(./zarf-package-coder-workspaces-template-publisher-amd64-*.tar.zst)
-      test "${#packages[@]}" -eq 1 || {
-        echo "Expected exactly one template-publisher package; set PUBLISH_PACKAGE explicitly." >&2
-        exit 1
-      }
-      package="${packages[0]}"
-    fi
-    test -f "$package" || {
-      echo "Publication package does not exist: $package" >&2
-      exit 1
-    }
-
-    deploy_variables="$(
-      jq -cn \
-        --arg CODER_TOKEN "$ZARF_VAR_CODER_TOKEN" \
-        --arg REGISTRY "$ZARF_VAR_REGISTRY" \
-        --arg DEJA_DOC_IMAGE "${ZARF_VAR_DEJA_DOC_IMAGE:-}" \
-        --arg DEJA_DOC_REPOSITORY "${ZARF_VAR_DEJA_DOC_REPOSITORY:-}" \
-        --arg DUPE_TROOPER_IMAGE "${ZARF_VAR_DUPE_TROOPER_IMAGE:-}" \
-        --arg DUPE_TROOPER_REPOSITORY "${ZARF_VAR_DUPE_TROOPER_REPOSITORY:-}" \
-        --arg HOME_STORAGE_CLASS "${ZARF_VAR_HOME_STORAGE_CLASS:-}" \
-        --arg PLATFORM_CA_CONFIG_MAP_NAME "${ZARF_VAR_PLATFORM_CA_CONFIG_MAP_NAME:-}" \
-        --arg GIT_BASE_URL "${ZARF_VAR_GIT_BASE_URL:-}" \
-        --arg SANDBOX_REPOSITORY "${ZARF_VAR_SANDBOX_REPOSITORY:-}" \
-        --arg K8S_DEV_REPOSITORY "${ZARF_VAR_K8S_DEV_REPOSITORY:-}" \
-        --arg DEFAULT_DOTFILES_REPOSITORY "${ZARF_VAR_DEFAULT_DOTFILES_REPOSITORY:-}" \
-        '$ARGS.named'
-    )"
-    ZARF_PACKAGE_DEPLOY_SET="$deploy_variables" \
-      zarf package deploy "$package" --connected --confirm
+    : "${ZARF_VAR_CODER_TOKEN:?Supply your manually created Coder API token in the environment}"
+    shopt -s nullglob
+    packages=(./zarf-package-coder-workspaces-publish-amd64-*.tar.zst)
+    test "${#packages[@]}" -eq 1 || { echo "Expected one publication package in this release directory." >&2; exit 1; }
+    zarf package deploy "${packages[0]}" --connected --confirm \
+      --set-variables "CODER_TOKEN=$ZARF_VAR_CODER_TOKEN"

@@ -1,5 +1,9 @@
 # Production workspace images
 
-This mirror-only package carries the digest-pinned runtime, module, tooling,
-project, and publisher images the publication package references. Mirror it
-before publishing templates that reference new digests.
+`zarf.yaml` owns the published production image pins. `local/zarf.yaml` carries
+the same image repositories from local OCI archives. Both produce the same
+mirror-only package interface; the root packaging recipes feed the corresponding
+digests into template publication. Mirror before publishing changed references.
+
+Update published pins here after image CI completes. Preserve old digests while
+any template revision, package, release, or workspace references them.

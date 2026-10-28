@@ -1,93 +1,94 @@
 # Production release
 
-Production uses two Zarf packages. `coder-workspaces-image-mirror` is
-mirror-only and carries the publisher, workspace, module, code-server, and
-VSIX images. `coder-workspaces-template-publisher` is deployed and publishes
-the workspace templates to an existing Coder deployment.
+Production needs two packages: `coder-workspaces-images` mirrors images into
+an existing registry; `coder-workspaces-publish` publishes both templates into
+an existing Coder Community deployment. Only the latter is deployed, with
+`--connected` so Zarf preserves the internal image references.
 
-The production cluster uses its own registry for this independently released
-payload. The publication package is deployed with `zarf package deploy
---connected`, which applies its fully qualified image references without
-importing or rewriting them. Each reference is built from the `REGISTRY`
-variable and the digests baked in at create time.
+## Build
 
-`SHA256SUMS` records the contents of the release media.
+Choose one source, from a clean committed checkout:
 
-## Package release media
+| Command                            | Image source                                           |
+| ---------------------------------- | ------------------------------------------------------ |
+| `just package-production-registry` | Published digests in `images/zarf.yaml`                |
+| `just package-production-local`    | Images built from this checkout, saved as OCI archives |
 
-Run from the repository root with its direnv environment loaded. Package only the
-publication package for template changes, or include the image mirror package
-when an image reference changed:
+Both produce `$BUILD_DIR/releases/YYYY.MM.DD-g<12-character-sha>` with the two
+packages, deployment instructions, `zarf-config.yaml`, `.env.example`, `RELEASE-METADATA`,
+and `SHA256SUMS`. The version comes from committed `HEAD`. Packaging refuses to
+overwrite that directory, including when switching image sources. If a build
+fails, remove only its incomplete output before retrying; retain completed
+releases. Copy the complete directory to the disconnected host.
+
+After either production build, copy the current commit's release to an existing
+transport directory:
 
 ```sh
-just package-release-templates
-just package-release
+RELEASE_DESTINATION=/path/to/media just copy
+RELEASE_DESTINATION=/path/to/media just copy-all
 ```
 
-The bundle and its package archives are written directly to
-`$BUILD_DIR/coder-workspaces`; production packaging does not stage another copy
-in the repository root. `BUILD_DIR`, Zarf's cache, and temporary data all live
-below `CACHE_DIR`, so set `CACHE_DIR` to a filesystem with enough free space
-before entering the direnv environment when creating image-mirror packages.
-Copy the bundle directory to the transport media. Mirror images before
-publishing templates that reference them.
+Choose `copy` for the publication package and deployment files when the images
+are already mirrored, or `copy-all` to include the image package too. Both reuse
+the built bundle, including its registry or local image references. They write
+to `coder-workspaces/<release>-publish` or `coder-workspaces/<release>-all`
+under the destination, regenerate checksums for the copied files, and refuse
+to overwrite an existing directory. If a copy fails, remove only that incomplete
+destination before retrying. `RELEASE_DESTINATION` can also be set in `.env`.
 
-To build and copy directly to an existing writable transport-media directory,
-run `just copy /path/to/media` for publication-only media or `just copy-all
-/path/to/media` for publication and image-mirror media. `RELEASE_DESTINATION`
-can provide the default when the positional destination is omitted. Each recipe
-replaces only the destination's `coder-workspaces` directory.
+The image package owns the production pins. Packaging feeds those same
+references into publication and fills the project images in `zarf-config.yaml`.
+Local builds use the same repository paths and their actual archive digests.
+No registry push is required to build local production media.
 
-## The publishing credential
+For a registry-based release containing image changes:
 
-The publisher authenticates with a short-lived Coder API token entered at the
-hidden `just publish` prompt, never from a stored Secret. The copied release's
-recipe maps that and the `.env` publication inputs into Zarf's deploy
-configuration, then runs the package in connected mode. Create the token
-manually in Coder from an account with Template Admin or Owner rights, and
-revoke it immediately afterward. The package creates the Kubernetes Secret
-imperatively rather than rendering it into Helm release data, runs the Job, and
-deletes the Secret through `onSuccess` only after the Job health check has
-completed. It deliberately does not use the earlier post-apply `after` phase.
-On failure it deletes the Job before the Secret, preventing a retained Pod from
-referencing a credential that no longer exists. If Kubernetes cannot confirm
-Job deletion, cleanup stops and preserves the Secret for the still-existing
-Job. The token is command-scoped and never enters this repository, package,
-release media, or rendered Helm state.
+1. Merge the image sources and wait for the successful `main` image workflow.
+2. Copy the changed images' references from that run's Actions summary into
+   `images/zarf.yaml`, replacing only `ghcr.io` with the package's logical
+   registry `registry.invalid`. Commit the pin changes; keep unchanged pins.
+3. Build from that clean commit with `just package-production-registry`.
 
-A failed publication fails the deploy: the Job is a Zarf health check, so an
-expired or insufficient token surfaces immediately rather than in a controller
-log. Re-run the connected deployment with a fresh token.
+Source changes alone never update deployed images. Local production packaging
+uses the checkout's image sources directly and needs no registry publication.
+Templates receive their image references from the publisher. Image versions
+remain independent; packaging does not bump them.
 
-Publication is idempotent. Unchanged template content and unchanged image
-digests resolve to a template version that is already active, and nothing is
-republished.
+## Publish
 
-## Deployment-owned values
+Follow the [copied release instructions](airgapped/README.md). The shipped
+`zarf-config.yaml` supplies the deployment inputs. Pass your manually created
+Coder token with `--set-variables CODER_TOKEN=...`, or as `ZARF_VAR_CODER_TOKEN`
+to `just publish`, which forwards it to that flag. Keep the token out of config
+files and release media.
 
-The package fixes the Coder and publisher namespaces, the publisher's
-`zot-reader` pull Secret, Git auth mode, and default branches.
-`release/publish/zarf.yaml` documents the remaining deployment values. The
-consuming platform provides the registry, those fixed names, Git access, and
-any selectable project images.
+The package declares a sensitive `CODER_TOKEN` variable and applies it through
+the `coder-template-publisher-auth` Secret. It replaces the previous Job before
+each deployment and waits for publication to complete. There are no Secret
+cleanup hooks: the token remains in the Secret and Helm release history.
+Revoke the API token in Coder after every attempt, including failed deployments.
 
-The templates resolve pinned upstream Coder modules from the `coder-modules`
-image at `/opt/coder-modules`; the publisher bundles the repository-owned
-`workspace-pod` module into each template archive. The consuming platform must
-transport and mount that exact image digest on the control plane that runs the
-built-in provisioners or upstream module resolution fails. The image remains
-in this portable images package even when a
-platform deployment package also transports it atomically with Coder. Before
-creating its short-lived credential or Job, the publication package verifies
-that the completed Coder rollout declares that exact volume reference and
-read-only mount. The check does not require `pods/exec` permission.
+Publication remains stateless and idempotent: template files and published
+variables determine the version. Production never updates existing workspaces
+automatically. A template-only release can use the registry recipe and skip
+mirroring when all pinned images are already present.
 
-Package versions and the publication package's OCI-free release identity are
-derived from committed `HEAD` as `YYYY.MM.DD-g<12-character-sha>`.
+## Platform responsibilities
 
-Artifact definitions use `registry.invalid` as a logical transport registry.
-Release packaging resolves it to the fixed connected source registry `ghcr.io`;
-the disconnected destination is selected by `zarf package mirror-resources` and
-by the `REGISTRY` variable at publication.
+The consuming platform provides the namespaces, Coder service, Git access,
+and any platform CA. The credential responsibilities are:
 
-Consume `images/` only with `zarf package mirror-resources`; never deploy it.
+| Namespace                                | Secret                          | Owner                                            |
+| ---------------------------------------- | ------------------------------- | ------------------------------------------------ |
+| `coder-template-publisher`               | `zot-reader`                    | Platform: registry pull access                   |
+| `coder-template-publisher`               | `coder-template-publisher-auth` | Package: supplied Coder API token                |
+| Workspace namespace (`coder` by default) | `private-registry`              | Platform: workspace and image-volume pull access |
+
+The Coder token cannot replace either registry credential.
+
+Mount the release's `CODER_MODULES_IMAGE` from `RELEASE-METADATA` read-only at
+`/opt/coder-modules` on Coder's built-in provisioner control plane. The
+repository-owned `workspace-pod` module travels inside the template payload.
+Publication no longer inspects a particular Deployment's volume names; module
+resolution errors fail the publication Job itself.

@@ -1,0 +1,19 @@
+# Non-secret production deployment inputs, shipped directly with each release.
+# Never add CODER_TOKEN here; supply it at deploy time with --set-variables.
+package:
+  deploy:
+    set:
+      REGISTRY: registry.herd-zero.internal
+      HOME_STORAGE_CLASS: ceph-block
+      PLATFORM_CA_CONFIG_MAP_NAME: coder-platform-root-ca
+      GIT_BASE_URL: https://forgejo.herd-zero.internal
+      SANDBOX_REPOSITORY: u11723298/uv-devcontainer
+      K8S_DEV_REPOSITORY: u11723298/uv-devcontainer
+      DEFAULT_DOTFILES_REPOSITORY: u11723298/coder-dotfiles
+      # Packaging fills both image values with the release's actual digests.
+      # If REGISTRY changes, change the hostname in these references too.
+      # Set an image to "" to disable its project.
+      DEJA_DOC_IMAGE: ""
+      DEJA_DOC_REPOSITORY: u11723298/deja-doc
+      DUPE_TROOPER_IMAGE: ""
+      DUPE_TROOPER_REPOSITORY: u11723298/dupe-trooper

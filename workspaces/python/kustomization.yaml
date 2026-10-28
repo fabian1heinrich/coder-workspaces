@@ -10,6 +10,7 @@ configMapGenerator:
       - .terraform.lock.hcl
       - README.md
       - agent.tf
+      - code-server-settings.json
       - auth.tf
       - deployment.tf
       - locals.tf

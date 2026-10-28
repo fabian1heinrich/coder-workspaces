@@ -66,9 +66,10 @@ The `k8s-dev` environment mounts no ServiceAccount token. Users supply
 
 ## Build and release
 
-`just build-template-artifacts` builds the workspace images and publisher for
-the local package. Use the root [local workflow](../README.md#local-deployment)
-for deployment.
+`just package-dev-local` builds images and packages the local platform.
+`just package-production-local` packages local images for an existing production
+platform; `just package-production-registry` uses the published pins. See the
+root [workflow](../README.md).
 
 Image provenance and upgrade steps live in each workspace's Containerfiles,
 locks, and README.

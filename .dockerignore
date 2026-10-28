@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+.direnv
+.cache
+kubeconfig
+**/.DS_Store
+**/.terraform
+**/*.tfstate*
+**/*.tfvars*
+**/.venv
+**/__pycache__
+**/*.oci.tar
+**/*.tar.zst
+**/zarf-config.yaml

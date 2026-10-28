@@ -18,8 +18,9 @@ template receives every variable it declares that the Job sets:
 `TF_VAR_<name>` applies to any template declaring `<name>`, and
 `TF_VAR_<prefix>_<name>` overrides it for one template, where the prefix is
 `python` or `k8s_dev`. Anything the Job leaves unset keeps the template's own
-default, so a mistyped name silently publishes a default value: check both
-sides when changing one.
+default. Runtime and tooling images are required inputs, so a missing image
+fails publication instead of silently selecting an old public-registry pin.
+Check names on both sides when changing them.
 
 `base/` contains the reusable Job, its egress policy, the publisher source
 ConfigMap, and a ServiceAccount with no Kubernetes permissions and no mounted
@@ -29,14 +30,18 @@ mounts each ConfigMap as a directory. Each consumer generates the
 patches only runtime details such as the publisher image. The token remains a
 Secret referenced directly by the Job.
 
+Both packages wait for the Job's `Complete=True` condition before finishing
+deployment. The native Zarf wait allows 11 minutes, covering the Job's
+10-minute deadline; a running or failed Job cannot satisfy it.
+
 The local overlay is `dev/template-publisher/`; the production overlay is
 `release/publish/manifests/`. Local development owns its publisher namespace,
 while production requires the consuming platform to create the selected
 publisher namespace. The publisher namespace is independent of the workspace
 namespace.
 
-Template description and icon are set when a template is first created, and the
-icon on every publication. Later description changes need
+Template description and icon are set when a template is first created.
+Later description changes need
 `coder templates edit`, because that command submits the full template metadata
 and would otherwise overwrite the scheduling and access settings that the
 deployment owns.
@@ -48,9 +53,10 @@ their defaults. New required parameters without defaults need user input.
 Set the template version in `base/publish.sh`. Use the [local Zarf
 commands](../dev/README.md).
 
-Production publication does not update existing workspaces, and takes its
-manually created credential from `ZARF_VAR_CODER_TOKEN` at deploy time. The
-production package creates the referenced Secret imperatively so the token
-never enters rendered Helm release data, then deletes it on success or failure.
-The operator revokes the API token in Coder after deployment. Mirror its
+Production publication does not update existing workspaces. Supply a manually
+created token through the sensitive `CODER_TOKEN` deploy variable. The copied
+release's `just publish` forwards `ZARF_VAR_CODER_TOKEN` to `--set-variables`.
+The package applies a regular auth Secret and replaces the previous Job on
+each deployment. The Secret and Helm release history retain the token value;
+the operator revokes the API token in Coder after every attempt. Mirror the
 digest-pinned images first; see the [production release workflow](../release/README.md).

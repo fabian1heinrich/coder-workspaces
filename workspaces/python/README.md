@@ -4,10 +4,10 @@ An air-gapped Python 3.13 development environment with code-server, approved
 extensions, persistent user state, and optional access to a deployment-owned
 Git service.
 
-Projects are declared once in `projects.json`, which this template carries and
-the build and CI read. Each entry has an independently versioned image with a
-locked uv environment; see [`images/README.md`](images/README.md). They contain
-no application source.
+`projects.json` supplies project descriptions, recommended sizes, and the local
+build and CI matrix. Template variables and package wiring are explicit. Each
+project has an independently versioned image with a locked uv environment;
+see [`images/README.md`](images/README.md). Images contain no application source.
 
 The immutable **Project** selector always offers `sandbox` and adds an entry
 for every catalog project whose per-project digest-pinned image variable the
@@ -22,10 +22,18 @@ prepends the registry from its default workspace image and requires every
 selection to be digest-pinned. Custom images must implement the same runtime
 and mounted-payload layouts as the repository-owned defaults.
 
-To add a project: add its entry to `projects.json`, add `pyproject.toml` and
-`uv.lock` under `images/<name>/`, add its image and repository variables to the
-template and publisher environment, and add its image to the transport package
-lists. The build and CI matrix follow from the catalog.
+To add a project:
+
+1. Add its catalog entry and `images/<name>/{pyproject.toml,uv.lock}`. Local image
+   builds and the CI matrix follow automatically.
+2. Add its image/repository variables in `variables.tf`, its profile in
+   `locals.tf`, and the matching entries in both publisher overlays.
+3. Wire its image into `dev/local/zarf.yaml`, both production image package
+   definitions, and the image argument/config handling in `Justfile`. Add its
+   deployment inputs to `dev/zarf.yaml`, `release/publish/zarf.yaml`, and
+   `release/airgapped/zarf-config.yaml`.
+
+A catalog entry alone does not enable a project in a deployed template.
 
 ## Using the workspace
 
@@ -40,7 +48,18 @@ lists. The build and CI matrix follow from the catalog.
   A managed project synchronizes its locked dependencies into that environment;
   its `pyproject.toml` and `uv.lock` remain immutable at `/opt/project-config`
   and do not need to exist in or be uploaded to the source checkout. `uv` uses
-  that config automatically.
+  that config automatically. The sandbox also includes uv; neither mode
+  downloads Python or public packages at startup.
+
+`code-server-settings.json` supplies the default interpreter
+`/home/coder/.venv/bin/python`, terminal activation, offline editor defaults,
+and basic whitespace settings. The existing code-server module merges these
+keys into its persistent User settings on startup; no settings-copy script is
+needed. Repository settings can override User settings. A workspace with a
+previously selected Python interpreter may need **Python: Select Interpreter**
+once, because the extension remembers that selection separately from its
+default. New terminals also activate the environment through image-owned shell
+hooks, so web terminals and SSH do not depend on the editor extension.
 
 The published `git_auth_mode` selects anonymous access, a generic Kubernetes
 Secret, or Coder external auth. No option is tied to a particular Git service

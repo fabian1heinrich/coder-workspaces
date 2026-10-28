@@ -126,18 +126,9 @@ module "code_server" {
   offline        = true
   install_prefix = "/opt/code-server"
   extensions_dir = "/home/coder/.local/share/code-server/extensions"
-  settings = {
-    "extensions.autoCheckUpdates"              = false
-    "extensions.autoUpdate"                    = false
-    "telemetry.telemetryLevel"                 = "off"
-    "terminal.integrated.defaultProfile.linux" = "zsh"
-    "terminal.integrated.cwd"                  = local.workspace_folder
-    "terminal.integrated.profiles.linux" = {
-      zsh = {
-        path = "/usr/bin/zsh"
-      }
-    }
-  }
+  settings = merge(jsondecode(file("${path.module}/code-server-settings.json")), {
+    "terminal.integrated.cwd" = local.workspace_folder
+  })
   additional_args = join(" ", [
     "--disable-telemetry",
     "--disable-update-check",

@@ -8,11 +8,7 @@ metadata:
 
 variables:
   - name: CODER_TOKEN
-    description: >-
-      Short-lived Coder API token created manually immediately before
-      deployment and supplied by the release's just publish recipe. Revoke it
-      in Coder after deployment; it is never stored in this package or the
-      release media.
+    description: Manually created Coder API token; revoke it after publication.
     sensitive: true
     pattern: "^.+$"
     prompt: true
@@ -65,117 +61,44 @@ variables:
 # registry, which the images package mirrors beforehand.
 constants:
   - name: PUBLISHER_IMAGE
-    value: "fabian1heinrich/coder-workspaces/publisher:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:9ac40c87c7e5ffdcda2ff8aa2bf02f7a310bb0f8bd4061a73c5bc11bb5e4ba37"
-  - name: WORKSPACE_IMAGE
-    value: "fabian1heinrich/coder-workspaces/python-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:2c4c704290f1c687a5e70e73d2773f7f615e895f7452e672aaee5cdd968d172a"
+    value: "###ZARF_PKG_TMPL_PUBLISHER_IMAGE###"
+  - name: PYTHON_WORKSPACE_IMAGE
+    value: "###ZARF_PKG_TMPL_PYTHON_WORKSPACE_IMAGE###"
   - name: K8S_WORKSPACE_IMAGE
-    value: "fabian1heinrich/coder-workspaces/k8s-workspace:sha-010e7ea9a9a6c74e4f2aaa75c8dea32478ecf51c@sha256:3ddf874c197a2b32d4528775b824c329fee2b7f15ce45ddc296a98bf159b61f1"
+    value: "###ZARF_PKG_TMPL_K8S_WORKSPACE_IMAGE###"
   - name: K8S_VSIX_IMAGE
-    value: "fabian1heinrich/coder-workspaces/k8s-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:94270796aebd22397cac6404eccf6b26275dee4b61c0a662fcba3575edf73836"
+    value: "###ZARF_PKG_TMPL_K8S_VSIX_IMAGE###"
   - name: CODE_SERVER_IMAGE
-    value: "fabian1heinrich/coder-workspaces/code-server:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:dd63e14c38e2a60b165f90b86d72c05ebf0faae2b54ce6cf38a30ec7c4bd84e1"
-  - name: VSIX_IMAGE
-    value: "fabian1heinrich/coder-workspaces/python-vsix:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:c16f4cf49bdaf1136e78b0cd7e05f78ec72909bce78502fb5fa09ea01ee047cd"
+    value: "###ZARF_PKG_TMPL_CODE_SERVER_IMAGE###"
+  - name: PYTHON_VSIX_IMAGE
+    value: "###ZARF_PKG_TMPL_PYTHON_VSIX_IMAGE###"
 
 # The production cluster uses its own registry for these independently released
 # images. Deploy with `zarf package deploy --connected` so Zarf applies the
 # fully qualified image references without importing or rewriting them.
 components:
   - name: publish-templates
-    description: Create the publisher credential and run the template publication Job
+    description: Apply the publisher credential and run the template publication Job
     required: true
     actions:
       onDeploy:
         before:
+          # Jobs do not rerun on apply, and their Pod templates are immutable.
           - cmd: |
-              set -eu
-              registry_config="$(
-                ./zarf tools kubectl -n coder-template-publisher \
-                  get secret zot-reader \
-                  -o jsonpath='{.data.\.dockerconfigjson}' |
-                  base64 --decode
-              )"
-              if ! printf '%s' "$registry_config" |
-                jq -e --arg registry "${ZARF_VAR_REGISTRY:?}" '
-                  .auths[$registry] as $credentials
-                  | ($credentials | type == "object")
-                    and (
-                      (($credentials.auth // "") | length) > 0
-                      or (
-                        (($credentials.username // "") | length) > 0
-                        and (($credentials.password // "") | length) > 0
-                      )
-                    )
-                ' >/dev/null; then
-                echo "Secret coder-template-publisher/zot-reader has no credentials for ${ZARF_VAR_REGISTRY}" >&2
-                exit 1
-              fi
-            description: Verify the publisher registry credential
-          - cmd: |
-              set -eu
-              ./zarf tools kubectl -n coder \
-                rollout status deployment/coder --timeout=5m
-              expected_reference="${ZARF_VAR_REGISTRY:?}/fabian1heinrich/coder-workspaces/coder-modules:sha-36f435f0b3de849e4704f6eed45236f8645e6166@sha256:e4f10be5f9c6253c98ddce8d4f1b836c80463f78c1efcb8da0179955265136ba"
-              deployment="$(
-                ./zarf tools kubectl -n coder get deployment coder -o json
-              )"
-              if ! printf '%s' "$deployment" | jq -e --arg reference "$expected_reference" '
-                any(
-                  .spec.template.spec.volumes[]?;
-                  .name == "coder-modules" and .image.reference == $reference
-                )
-                and any(
-                  .spec.template.spec.containers[]?
-                  | select(.name == "coder")
-                  | .volumeMounts[]?;
-                  .name == "coder-modules"
-                    and .mountPath == "/opt/coder-modules"
-                    and .readOnly == true
-                )
-              ' >/dev/null; then
-                actual_reference="$(
-                  printf '%s' "$deployment" |
-                    jq -r '.spec.template.spec.volumes[]? | select(.name == "coder-modules") | .image.reference // "<missing>"'
-                )"
-                echo "Coder is not running the required module volume." >&2
-                echo "Expected: ${expected_reference}" >&2
-                echo "Observed: ${actual_reference:-<missing>}" >&2
-                exit 1
-              fi
-            description: Verify the built-in provisioner module volume
-          - cmd: |
-              set -eu
               ./zarf tools kubectl -n coder-template-publisher \
-                delete job template-publisher --ignore-not-found --wait=true
-            description: Remove a previous publication Job
-            mute: true
-          - cmd: |
-              set -eu
-              printf '%s' "${ZARF_VAR_CODER_TOKEN:?}" |
-                ./zarf tools kubectl -n coder-template-publisher create secret generic \
-                  coder-template-publisher-auth --from-file=token=/dev/stdin \
-                  --dry-run=client -o yaml |
-                ./zarf tools kubectl apply --server-side -f -
-            description: Create the short-lived publishing credential
-            mute: true
-        # Keep the credential until the Job health check succeeds. `after`
-        # runs after resource application and is too early for Pod startup.
-        onSuccess:
-          - cmd: |
-              set -eu
-              ./zarf tools kubectl -n coder-template-publisher \
-                delete secret coder-template-publisher-auth --ignore-not-found
-            description: Remove the publishing credential after publication
-            mute: true
-        onFailure:
-          - cmd: |
-              set -eu
-              ./zarf tools kubectl -n coder-template-publisher \
-                delete job template-publisher --ignore-not-found --wait=true
-              ./zarf tools kubectl -n coder-template-publisher \
-                delete secret coder-template-publisher-auth --ignore-not-found
-            description: Remove the failed publication Job and its credential
-            mute: true
+                delete job template-publisher --ignore-not-found \
+                --cascade=foreground --wait=true --timeout=2m
+            description: Replace the previous publication Job
+        after:
+          # The generic Job health check also accepts running Jobs.
+          - wait:
+              cluster:
+                kind: Job
+                name: template-publisher
+                namespace: coder-template-publisher
+                condition: Complete=True
+            maxTotalSeconds: 660
+            description: Wait for successful template publication
     manifests:
       - name: coder-workspace-template-publisher
         kustomizeAllowAnyDirectory: true

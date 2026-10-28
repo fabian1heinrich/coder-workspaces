@@ -74,11 +74,7 @@ sync_python_environment() {
   if [ ! -r "${python_config_dir}/pyproject.toml" ] &&
     [ ! -r "${python_config_dir}/uv.lock" ]; then
     if [ ! -x "${python_environment}/bin/python" ]; then
-      command -v python3 >/dev/null 2>&1 || {
-        printf 'workspace-startup: Python workspace requires python3\n' >&2
-        return 1
-      }
-      python3 -m venv "${python_environment}"
+      uv venv --python /usr/local/bin/python3 "${python_environment}"
     fi
     test -x "${python_environment}/bin/python"
     return
@@ -89,11 +85,6 @@ sync_python_environment() {
     printf 'workspace-startup: managed Python project configuration is incomplete\n' >&2
     return 1
   fi
-
-  command -v uv >/dev/null 2>&1 || {
-    printf 'workspace-startup: managed Python project requires uv\n' >&2
-    return 1
-  }
 
   # The project definition is immutable image content. Materialize only its
   # dependencies in persistent storage; the application source remains in the
