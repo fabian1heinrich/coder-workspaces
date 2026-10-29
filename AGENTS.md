@@ -101,7 +101,8 @@ Keep these layers separate and independently versioned:
 - Keep the root `Justfile` to compact build, packaging, release, deployment,
   and kind-cluster helpers. Prefer a short Just recipe over a long README shell
   block, but do not hide operations in wrapper scripts. Public recipes take no
-  positional arguments; use distinct names and environment variables instead.
+  positional arguments except the copy recipes' optional destination; otherwise
+  use distinct names and environment variables.
   Do not add metadata extraction, lockfile maintenance, one-off helpers, local
   validation, lint, test, render, smoke-test, or preflight recipes.
 - Keep the root, `modules/`, `workspaces/`, `template-publisher/`, and `dev/`

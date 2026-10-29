@@ -10,40 +10,53 @@ package-production-registry:
 package-production-local:
     just _package-production local
 
-# Copy the built publication package and deployment files to transport media.
-copy:
-    just _copy-production publish
+# Rebuild production packages from registry images and copy publication files.
+copy destination=env("RELEASE_DESTINATION", ""):
+    just _copy-production publish registry {{ quote(destination) }}
 
-# Copy the built publication and image packages with their deployment files.
-copy-all:
-    just _copy-production all
+# Rebuild from registry images and copy both production packages and deployment files.
+copy-all destination=env("RELEASE_DESTINATION", ""):
+    just _copy-production all registry {{ quote(destination) }}
+
+# Rebuild local images and copy both production packages and deployment files.
+copy-all-local destination=env("RELEASE_DESTINATION", ""):
+    just _copy-production all local {{ quote(destination) }}
 
 [private]
-_copy-production mode:
+_copy-production mode source requested_destination:
     #!/usr/bin/env bash
     set -euo pipefail
-    : "${RELEASE_DESTINATION:?Set RELEASE_DESTINATION to an existing writable transport directory}"
-    destination="$(cd -- "$RELEASE_DESTINATION" && pwd -P)"
+    umask 0022
+    requested_destination={{ quote(requested_destination) }}
+    : "${requested_destination:?Pass an existing writable destination or set RELEASE_DESTINATION}"
+    destination="$(cd -- "$requested_destination" && pwd -P)"
+    test -w "$destination" && test -x "$destination" || {
+      echo "Transport directory must be writable and searchable: $destination" >&2
+      exit 1
+    }
     revision="$(git rev-parse HEAD)"
     date="$(git show -s --format=%cs HEAD)"
     release="${date//-/.}-g${revision:0:12}"
     bundle={{ quote(build_dir) }}/releases/"$release"
-    test -f "$bundle/SHA256SUMS" || {
-      echo "Build this release first with just package-production-registry or just package-production-local." >&2
-      exit 1
-    }
     target="$destination/coder-workspaces/$release-{{ mode }}"
-    mkdir -p "$(dirname "$target")"
-    mkdir "$target" # Keep previously copied releases intact.
+    mkdir -p "$target"
+    # Repair directories created by an earlier run with a restrictive umask.
+    chmod 0755 "$destination/coder-workspaces" "$target"
+    test -w "$target" || { echo "Release directory must be writable: $target" >&2; exit 1; }
+    staging="$(mktemp -d "$destination/coder-workspaces/.copy.XXXXXX")"
+    trap 'rm -rf -- "$staging"' EXIT
+    just "package-production-{{ source }}"
     cp "$bundle"/{Justfile,README.md,.envrc,.env.example,zarf-config.yaml,RELEASE-METADATA} \
-      "$bundle/zarf-package-coder-workspaces-publish-amd64-${release}.tar.zst" "$target/"
+      "$bundle/zarf-package-coder-workspaces-publish-amd64-${release}.tar.zst" "$staging/"
     if test {{ quote(mode) }} = all; then
-      cp "$bundle/zarf-package-coder-workspaces-images-amd64-${release}.tar.zst" "$target/"
+      cp "$bundle/zarf-package-coder-workspaces-images-amd64-${release}.tar.zst" "$staging/"
     fi
-    (cd "$target" && find . -type f ! -name SHA256SUMS -exec sha256sum {} + | sort -k2 > SHA256SUMS)
-    find "$target" -type d -exec chmod 0755 {} +
-    find "$target" -type f -exec chmod 0644 {} +
-    sync
+    (cd "$staging" && find . -type f ! -name SHA256SUMS -exec sha256sum {} + | sort -k2 > SHA256SUMS)
+    find "$staging" -type f -exec chmod 0644 {} +
+    # Replace shipped files without changing permissions on operator-owned files.
+    shopt -s dotglob
+    mv -f -- "$staging/"* "$target/"
+    sync -f "$target"
     printf 'Copied release: %s\n' "$target"
 
 # Build and package the complete local development platform.
@@ -86,21 +99,24 @@ _build-images mode:
 _build-image containerfile name target="" project="":
     #!/usr/bin/env bash
     set -euo pipefail
+    umask 0022
     mkdir -p {{ quote(build_dir) }}
     image="registry.invalid/fabian1heinrich/coder-workspaces/{{ name }}:local"
-    args=(--platform linux/amd64 --timestamp 315532800)
+    args=(--layers --platform linux/amd64 --timestamp 315532800)
     test -z {{ quote(target) }} || args+=(--target {{ quote(target) }})
     test -z {{ quote(project) }} || args+=(--build-arg PROJECT={{ quote(project) }})
     podman build "${args[@]}" --file {{ quote(containerfile) }} --tag "$image" .
     archive={{ quote(build_dir / name) }}.oci.tar
     trap 'rm -f -- "${archive}.tmp"' EXIT
     podman save --format oci-archive --output "${archive}.tmp" "$image"
+    chmod 0644 "${archive}.tmp"
     mv -- "${archive}.tmp" "$archive"
 
 [private]
 _package-production source:
     #!/usr/bin/env bash
     set -euo pipefail
+    umask 0022
     test -z "$(git status --porcelain)" || {
       echo "Production releases must be built from a clean worktree." >&2
       exit 1
@@ -109,10 +125,12 @@ _package-production source:
     date="$(git show -s --format=%cs HEAD)"
     release="${date//-/.}-g${revision:0:12}"
     build_path={{ quote(build_dir) }}
-    bundle="$build_path/releases/$release"
-    mkdir -p "$(dirname "$bundle")"
-    mkdir "$bundle" # Never overwrite a release, including one built from another source.
+    target="$build_path/releases/$release"
+    mkdir -p "$(dirname "$target")"
+    bundle="$(mktemp -d "$build_path/releases/.${release}.XXXXXX")"
+    trap 'rm -rf -- "$bundle"' EXIT
     cp release/deploy/{Justfile,README.md,.envrc,.env.example,zarf-config.yaml} "$bundle/"
+    sed -i "s/###RELEASE_ID###/$release/g" "$bundle/Justfile"
     printf 'release_id=%s\ngit_revision=%s\nimage_source=%s\n' "$release" "$revision" {{ quote(source) }} > "$bundle/RELEASE-METADATA"
     image_package=release/images-registry.yaml
     registry_args=(--registry-override registry.invalid=ghcr.io)
@@ -148,7 +166,11 @@ _package-production source:
       "${registry_args[@]}" --output "$bundle" "${args[@]}" --confirm
     zarf package create release/publish.yaml --architecture amd64 --output "$bundle" "${args[@]}" --confirm
     (cd "$bundle" && find . -type f ! -name SHA256SUMS -exec sha256sum {} + | sort -k2 > SHA256SUMS)
-    printf 'Release: %s\n' "$bundle"
+    find "$bundle" -type d -exec chmod 0755 {} +
+    find "$bundle" -type f -exec chmod 0644 {} +
+    rm -rf -- "$target"
+    mv -- "$bundle" "$target"
+    printf 'Release: %s\n' "$target"
 
 # Create the local kind cluster.
 create-kind-cluster:

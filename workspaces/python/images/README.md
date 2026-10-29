@@ -18,12 +18,19 @@ contract.
 The shared runtime includes digest-pinned uv 0.8.15, including for the sandbox.
 Each project pins Python and all dependencies, performs a locked sync without
 installing the project, and stores its offline cache in `/opt/uv-cache`.
+Dependency preparation has its own build stage, keyed by the Python and uv
+images plus the project's `pyproject.toml` and `uv.lock`. Startup script,
+shell hook, and image-label changes reuse that stage. Local builds explicitly
+enable layer caching; changing dependency inputs or clearing the build cache
+requires downloading again. The final image includes `/opt/uv-cache` for offline
+workspace startup.
 
-Every Python workspace creates its persistent `/home/coder/.venv` on first
-start, exports it as `VIRTUAL_ENV`, and places its `bin` first on `PATH`, so the
-Coder agent and its children inherit it. Image-owned Bash and Zsh hooks also
-source the environment's activation script when a shell opens, even with an
-existing home volume. User dotfiles can still deliberately override it.
+The Python template runs `workspace-startup /home/coder/.venv` before the agent.
+It creates the venv if absent, including in an existing home volume, and fails
+startup if its interpreter cannot run from that location. The image exports
+`VIRTUAL_ENV` and places the venv's `bin` first on `PATH`. Image-owned Bash and
+Zsh hooks source its activation script; Zsh waits until the first prompt so
+persistent dotfiles finish setting PATH and the theme first.
 `UV_OFFLINE=true` and `UV_PYTHON_DOWNLOADS=never` prevent public downloads;
 managed projects also use `UV_LINK_MODE=copy` for the preloaded cache.
 `/opt/project-config` contains the two managed files and is exported as

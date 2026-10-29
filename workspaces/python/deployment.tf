@@ -36,7 +36,7 @@ module "workspace" {
   git_base_url                = var.git_base_url
   git_credentials_secret_name = var.git_credentials_secret_name
 
-  startup_commands  = ["workspace-startup"]
+  startup_commands  = ["workspace-startup /home/coder/.venv"]
   agent_init_script = coder_agent.main.init_script
   agent_token       = coder_agent.main.token
 }

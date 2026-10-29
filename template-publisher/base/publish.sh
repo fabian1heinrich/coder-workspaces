@@ -100,8 +100,22 @@ template_exists() {
 # missing version: the version has to be pushed.
 version_row() {
   local name="$1" version="$2"
-  "${coder}" templates versions list "${name}" --column name,active 2>/dev/null |
-    awk -v version="${version}" '$1 == version { print; exit }'
+  "${coder}" templates versions list "${name}" --column name,id,status,active |
+    awk -v version="${version}" '$1 == version { print }'
+}
+
+# The expected version hashes the files and supplied variables, including every
+# image reference. Check activation after both a push and an idempotent reuse;
+# a successful CLI invocation alone is not evidence that this version is active.
+verify_active() {
+  local name="$1" version="$2" row actual id active status
+  row="$(version_row "${name}" "${version}")"
+  read -r actual id status active <<<"${row}"
+  if [[ "${actual}" != "${version}" || -z "${id}" || "${active}" != Active || "${status}" != Succeeded ]]; then
+    echo "Template ${name} did not activate expected version ${version}: ${row:-missing version}." >&2
+    exit 1
+  fi
+  printf 'Verified template %s active version %s (%s)\n' "${name}" "${version}" "${id}"
 }
 
 published_templates=()
@@ -115,18 +129,24 @@ for entry in "${templates[@]}"; do
   version="${template_version}-${revision}${publish_id:+-${publish_id}}"
   published_templates+=("${name}")
 
-  row="$(version_row "${name}" "${version}" || true)"
+  row="$(version_row "${name}" "${version}" 2>/dev/null || true)"
   if [[ -n "${row}" ]]; then
     # This version name can only exist because this script pushed it with
     # --activate, so a version that is no longer active was superseded and
     # needs promoting back.
-    if [[ "${row#"${version}"}" == *true* ]]; then
+    read -r _ _ status active <<<"${row}"
+    if [[ "${status}" != Succeeded ]]; then
+      echo "Existing version ${version} of template ${name} is not successful: ${row}." >&2
+      exit 1
+    fi
+    if [[ "${active}" == Active ]]; then
       echo "Template ${name} already serves ${version}."
     else
       echo "Promoting existing version ${version} of template ${name}."
       "${coder}" templates versions promote \
         --template "${name}" --template-version "${version}"
     fi
+    verify_active "${name}" "${version}"
     continue
   fi
 
@@ -148,6 +168,7 @@ for entry in "${templates[@]}"; do
       --icon "${icon}" \
       --yes
   fi
+  verify_active "${name}" "${version}"
 done
 
 # Local Zarf deployments update every outdated workspace with the existing

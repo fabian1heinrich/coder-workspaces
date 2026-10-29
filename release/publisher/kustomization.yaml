@@ -2,6 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: coder-template-publisher
 
+# Identify the release on the Job and every referenced ConfigMap.
+commonAnnotations:
+  com.coder.release: "###ZARF_CONST_RELEASE_ID###"
+
 resources:
   - auth-secret.yaml
   - ../../modules/workspace-pod

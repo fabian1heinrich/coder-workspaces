@@ -14,7 +14,9 @@ code_server_prefix="${CODER_CODE_SERVER_PREFIX:-/opt/code-server}"
 extensions_dir="${CODER_EXTENSIONS_DIR:-${HOME}/.local/share/code-server/extensions}"
 payload_marker=".coder-vsix-payload"
 python_config_dir="${CODER_PYTHON_CONFIG_DIR:-/opt/project-config}"
-python_environment="${CODER_PYTHON_ENVIRONMENT:-}"
+# Python templates pass the required environment path explicitly. A missing
+# image environment variable must not silently skip Python initialization.
+python_environment="${1:-}"
 
 # Image volumes are immutable for a given digest, so the file names and sizes
 # of the payload identify it without reading every byte at startup.
@@ -67,35 +69,37 @@ sync_extensions() {
 }
 
 sync_python_environment() {
-  # Only Python workspace images opt into this contract. Other workspace
-  # images share this startup script but leave CODER_PYTHON_ENVIRONMENT unset.
+  # The Kubernetes operations template calls this without a Python path.
   [ -n "${python_environment}" ] || return 0
 
-  if [ ! -r "${python_config_dir}/pyproject.toml" ] &&
-    [ ! -r "${python_config_dir}/uv.lock" ]; then
-    if [ ! -x "${python_environment}/bin/python" ]; then
-      uv venv --python /usr/local/bin/python3 "${python_environment}"
-    fi
-    test -x "${python_environment}/bin/python"
-    return
-  fi
-
-  if [ ! -r "${python_config_dir}/pyproject.toml" ] ||
-    [ ! -r "${python_config_dir}/uv.lock" ]; then
-    printf 'workspace-startup: managed Python project configuration is incomplete\n' >&2
+  if [ -r "${python_config_dir}/pyproject.toml" ] &&
+    [ -r "${python_config_dir}/uv.lock" ]; then
+    # uv sync creates a missing venv and restores the locked dependencies.
+    UV_PROJECT_ENVIRONMENT="${python_environment}" \
+      uv sync --offline --no-python-downloads \
+        --project "${python_config_dir}" \
+        --locked \
+        --all-groups \
+        --no-install-project
+  elif [ -e "${python_config_dir}/pyproject.toml" ] ||
+    [ -e "${python_config_dir}/uv.lock" ]; then
+    printf 'workspace-startup: managed Python project configuration is incomplete or unreadable\n' >&2
     return 1
+  elif [ ! -r "${python_environment}/pyvenv.cfg" ] ||
+    [ ! -x "${python_environment}/bin/python" ]; then
+    uv venv --offline --no-python-downloads \
+      --python /usr/local/bin/python3 "${python_environment}"
   fi
 
-  # The project definition is immutable image content. Materialize only its
-  # dependencies in persistent storage; the application source remains in the
-  # independently cloned checkout and needs no copied pyproject.toml.
-  UV_PROJECT_ENVIRONMENT="${python_environment}" \
-    uv sync \
-      --project "${python_config_dir}" \
-      --locked \
-      --all-groups \
-      --no-install-project
-  test -x "${python_environment}/bin/python"
+  # Do not start the agent/editor with a missing or incorrectly located venv.
+  "${python_environment}/bin/python" - "${python_environment}" <<'PY'
+import os
+import sys
+
+if sys.prefix == sys.base_prefix or not os.path.samefile(sys.prefix, sys.argv[1]):
+    raise SystemExit(f"workspace-startup: invalid Python environment at {sys.argv[1]}")
+print(f"workspace-startup: Python environment ready at {sys.prefix}", flush=True)
+PY
 }
 
 sync_extensions

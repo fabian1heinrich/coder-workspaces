@@ -41,9 +41,13 @@ There are three packaging commands:
 | `just package-dev-local` | Complete development platform using local image builds |
 
 Production output is versioned under `$BUILD_DIR/releases`; development output
-is directly under `$BUILD_DIR`. Use `just copy` for publication-only media or
-`just copy-all` for the complete production bundle, with `RELEASE_DESTINATION`
-set to the transport directory. `just --list` also includes kind-cluster helpers.
+is directly under `$BUILD_DIR`. Use `just copy` for publication-only media,
+`just copy-all` for the complete production bundle from registry images, or
+`just copy-all-local` for the complete production bundle from locally built images.
+Pass the transport directory as an optional argument, for example
+`just copy-all-local /path/to/media`, or set `RELEASE_DESTINATION`.
+Every copy command rebuilds its packages and overwrites matching destination files.
+`just --list` also includes kind-cluster helpers.
 The owning READMEs document copying and deployment.
 
 ## Local deployment
@@ -64,9 +68,11 @@ recovery, or monitoring.
 
 Production mirrors digest-pinned images into the internal registry, then
 publishes the templates with `zarf package deploy --connected` using the
-platform's existing registry without image rewriting. The publishing token is
-supplied for that one command and never stored in release media. The consuming platform owns
-credentials, registry access, namespaces, and environment configuration. See the
+platform's existing registry without image rewriting. Run `just deploy` in the
+copied full release to perform both steps with that release's packages and config.
+The publishing token is supplied for that one command and never stored in release
+media. The consuming platform owns credentials, registry access, namespaces,
+and environment configuration. See the
 [production release workflow](release/README.md).
 
 ## Image CI

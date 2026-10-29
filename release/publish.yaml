@@ -10,7 +10,6 @@ variables:
   - name: CODER_TOKEN
     description: Manually created Coder API token; revoke it after publication.
     sensitive: true
-    pattern: "^.+$"
     prompt: true
   - name: REGISTRY
     description: Internal registry holding the mirrored workspace images.
@@ -60,6 +59,8 @@ variables:
 # Digests are baked at create time and resolved against the deployment's own
 # registry, which the images package mirrors beforehand.
 constants:
+  - name: RELEASE_ID
+    value: "###ZARF_PKG_TMPL_RELEASE_ID###"
   - name: PUBLISHER_IMAGE
     value: "###ZARF_PKG_TMPL_PUBLISHER_IMAGE###"
   - name: PYTHON_WORKSPACE_IMAGE
@@ -83,13 +84,68 @@ components:
     actions:
       onDeploy:
         before:
-          # Jobs do not rerun on apply, and their Pod templates are immutable.
           - cmd: |
-              ./zarf tools kubectl -n coder-template-publisher \
-                delete job template-publisher --ignore-not-found \
-                --cascade=foreground --wait=true --timeout=2m
-            description: Replace the previous publication Job
+              set -eu
+              uid="$(./zarf tools kubectl -n coder-template-publisher get job template-publisher \
+                --ignore-not-found -o jsonpath='{.metadata.uid}')"
+              printf '%s\n' "${uid:-absent}"
+            setVariables:
+              - name: PREVIOUS_PUBLISHER_UID
+            description: Record the previous publisher Job identity
+          - cmd: ./zarf tools kubectl -n coder-template-publisher delete job template-publisher --ignore-not-found --cascade=foreground --wait=true --timeout=2m
+            description: Replace the previous publisher Job
         after:
+          # ConfigMaps are applied normally. Validate the inputs referenced by
+          # the new Job, rather than deleting payloads to force a refresh.
+          - cmd: |
+              set -eu
+              kube() { ./zarf tools kubectl -n coder-template-publisher "$@"; }
+              expected="$ZARF_CONST_RELEASE_ID"
+              require_release() {
+                actual="$(kube get "$1" "$2" -o jsonpath='{.metadata.annotations.com\.coder\.release}')"
+                if [ "$actual" != "$expected" ]; then
+                  printf 'Publication release mismatch: %s/%s has %s; expected %s\n' "$1" "$2" "$actual" "$expected" >&2
+                  exit 1
+                fi
+              }
+              require_release job template-publisher
+              uid="$(kube get job template-publisher -o jsonpath='{.metadata.uid}')"
+              if [ -z "$uid" ] || [ "$uid" = "$ZARF_VAR_PREVIOUS_PUBLISHER_UID" ]; then
+                printf 'The publisher Job was not replaced for release %s\n' "$expected" >&2
+                exit 1
+              fi
+              image="$(kube get job template-publisher -o jsonpath='{.spec.template.spec.containers[?(@.name=="publish")].image}')"
+              if [ "$image" != "$ZARF_VAR_REGISTRY/$ZARF_CONST_PUBLISHER_IMAGE" ]; then
+                printf 'Publisher image mismatch: got %s; expected %s/%s\n' "$image" "$ZARF_VAR_REGISTRY" "$ZARF_CONST_PUBLISHER_IMAGE" >&2
+                exit 1
+              fi
+              configmaps="$(kube get job template-publisher \
+                -o jsonpath='{.spec.template.spec.containers[*].envFrom[*].configMapRef.name} {.spec.template.spec.volumes[*].configMap.name}')"
+              test -n "$configmaps"
+              for configmap in $configmaps; do
+                require_release configmap "$configmap"
+              done
+              environment="$(kube get job template-publisher \
+                -o jsonpath='{.spec.template.spec.containers[?(@.name=="publish")].envFrom[*].configMapRef.name}')"
+              test -n "$environment"
+              require_image() {
+                actual="$(kube get configmap "$environment" -o "jsonpath={.data.$1}")"
+                if [ "$actual" != "$2" ]; then
+                  printf 'Publication image mismatch: %s has %s; expected %s\n' "$1" "$actual" "$2" >&2
+                  exit 1
+                fi
+              }
+              require_image TF_VAR_sandbox_image "$ZARF_VAR_REGISTRY/$ZARF_CONST_PYTHON_WORKSPACE_IMAGE"
+              require_image TF_VAR_deja_doc_image "$ZARF_VAR_DEJA_DOC_IMAGE"
+              require_image TF_VAR_dupe_trooper_image "$ZARF_VAR_DUPE_TROOPER_IMAGE"
+              require_image TF_VAR_k8s_dev_image "$ZARF_VAR_REGISTRY/$ZARF_CONST_K8S_WORKSPACE_IMAGE"
+              require_image TF_VAR_code_server_image "$ZARF_VAR_REGISTRY/$ZARF_CONST_CODE_SERVER_IMAGE"
+              require_image TF_VAR_vsix_image "$ZARF_VAR_REGISTRY/$ZARF_CONST_PYTHON_VSIX_IMAGE"
+              require_image TF_VAR_k8s_dev_vsix_image "$ZARF_VAR_REGISTRY/$ZARF_CONST_K8S_VSIX_IMAGE"
+              printf '%s\n' "$uid"
+            setVariables:
+              - name: PUBLISHER_JOB_UID
+            description: Verify the new Job, release payloads, and requested image references
           # The generic Job health check also accepts running Jobs.
           - wait:
               cluster:
@@ -99,6 +155,33 @@ components:
                 condition: Complete=True
             maxTotalSeconds: 660
             description: Wait for successful template publication
+          - cmd: |
+              set -eu
+              kube() { ./zarf tools kubectl -n coder-template-publisher "$@"; }
+              require_job() {
+                uid="$(kube get job template-publisher -o jsonpath='{.metadata.uid}')"
+                if [ "$uid" != "$ZARF_VAR_PUBLISHER_JOB_UID" ]; then
+                  printf 'Publisher Job changed during publication; refusing to report success\n' >&2
+                  exit 1
+                fi
+              }
+              require_job
+              logs="$(kube logs job/template-publisher -c publish)"
+              for template in python-workspace k8s-dev; do
+                if ! printf '%s\n' "$logs" | grep -E "^Verified template $template active version [^ ]+ \([0-9a-f-]+\)$"; then
+                  printf 'Missing activation verification for template %s\n' "$template" >&2
+                  exit 1
+                fi
+              done
+              require_job
+              printf 'Published and verified workspace templates from release %s\n' "$ZARF_CONST_RELEASE_ID"
+            description: Require activation evidence from the same completed publisher Job
+        onFailure:
+          - cmd: |
+              ./zarf tools kubectl -n coder-template-publisher get jobs,pods -o wide || true
+              ./zarf tools kubectl -n coder-template-publisher logs job/template-publisher -c publish --tail=100 || true
+            maxTotalSeconds: 30
+            description: Show publisher status and recent logs without hiding the deployment failure
     manifests:
       - name: coder-workspace-template-publisher
         kustomizeAllowAnyDirectory: true

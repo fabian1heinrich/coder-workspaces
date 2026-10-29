@@ -11,7 +11,8 @@ content revision hashes the template's files together with the variable values
 it is published with. Re-running the Job with unchanged input finds that
 version already active and publishes nothing; a changed file or image digest
 produces a new version. `PUBLISH_ID` appends a suffix for republishing
-identical content.
+identical content. After a push or reuse, the publisher checks that the expected
+version is successful and active before emitting its verification record.
 
 The publisher manages both the `python-workspace` and `k8s-dev` templates. Each
 template receives every variable it declares that the Job sets:
@@ -56,7 +57,9 @@ commands](../dev/README.md).
 Production publication does not update existing workspaces. Supply a manually
 created token through the sensitive `CODER_TOKEN` deploy variable. The copied
 release's `just publish` forwards `ZARF_VAR_CODER_TOKEN` to `--set-variables`.
-The package applies a regular auth Secret and replaces the previous Job on
-each deployment. The Secret and Helm release history retain the token value;
-the operator revokes the API token in Coder after every attempt. Mirror the
+The package applies a regular auth Secret, replaces the previous Job, and applies
+its ConfigMap inputs normally. It checks the Job identity, release annotations,
+and requested image references, then requires completion and activation records
+for both templates from the same Job. The Secret and Helm release history retain
+the token value; the operator revokes the API token in Coder after every attempt. Mirror the
 digest-pinned images first; see the [production release workflow](../release/README.md).

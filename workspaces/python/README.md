@@ -45,6 +45,9 @@ A catalog entry alone does not enable a project in a deployed template.
 - code-server, the web terminal, and SSH start in the selected repository, or
   `/home/coder` when none is selected.
 - Every Python workspace starts with its persistent `/home/coder/.venv` active.
+  The template explicitly runs `workspace-startup /home/coder/.venv` before
+  the agent; startup creates a missing venv and must verify its interpreter
+  before code-server can start.
   A managed project synchronizes its locked dependencies into that environment;
   its `pyproject.toml` and `uv.lock` remain immutable at `/opt/project-config`
   and do not need to exist in or be uploaded to the source checkout. `uv` uses
@@ -59,7 +62,9 @@ needed. Repository settings can override User settings. A workspace with a
 previously selected Python interpreter may need **Python: Select Interpreter**
 once, because the extension remembers that selection separately from its
 default. New terminals also activate the environment through image-owned shell
-hooks, so web terminals and SSH do not depend on the editor extension.
+hooks. Zsh activates once at its first prompt, after persistent dotfiles have
+set their PATH and theme, so web terminals and SSH do not depend on the editor
+extension.
 
 The published `git_auth_mode` selects anonymous access, a generic Kubernetes
 Secret, or Coder external auth. No option is tied to a particular Git service

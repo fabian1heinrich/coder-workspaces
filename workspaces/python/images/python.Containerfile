@@ -1,7 +1,36 @@
 # uv 0.8.15, shared by sandbox and managed project workspaces.
 FROM ghcr.io/astral-sh/uv@sha256:a5727064a0de127bdb7c9d3c1383f3a9ac307d9f2d8a391edc7896c54289ced0 AS uv
 
-FROM mcr.microsoft.com/devcontainers/python:3.2.6-3.13-trixie@sha256:5ea7e72d3c1beb6aefdfea8001483345c39af4898e22f2c543deb6a00802ede4 AS runtime
+FROM mcr.microsoft.com/devcontainers/python:3.2.6-3.13-trixie@sha256:5ea7e72d3c1beb6aefdfea8001483345c39af4898e22f2c543deb6a00802ede4 AS python-base
+
+COPY --from=uv --chmod=0555 /uv /uvx /usr/local/bin/
+
+# Dependency downloads depend only on Python, uv, and the project's locked
+# configuration. Runtime scripts and image labels must not invalidate them.
+FROM python-base AS project-dependencies
+
+ARG PROJECT
+
+USER root
+RUN install -d -o 1000 -g 1000 -m 0755 /opt/project-config /opt/uv-cache
+COPY --chown=1000:1000 --chmod=0444 workspaces/python/images/${PROJECT}/pyproject.toml workspaces/python/images/${PROJECT}/uv.lock /opt/project-config/
+
+ENV UV_CACHE_DIR=/opt/uv-cache \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=.venv \
+    UV_PYTHON_DOWNLOADS=never
+
+USER 1000:1000
+WORKDIR /opt/project-config
+RUN UV_OFFLINE=false uv sync --locked --all-groups --no-install-project \
+    && rm -rf .venv \
+    && test -n "$(find /opt/uv-cache -type f -print -quit)"
+
+USER root
+RUN chmod -R a=rX /opt/project-config \
+    && chmod -R u+rwX,go=rX /opt/uv-cache
+
+FROM python-base AS runtime
 
 ARG IMAGE_VERSION=0.1.0
 
@@ -42,7 +71,6 @@ RUN set -eux; \
 COPY --chown=root:root --chmod=0555 \
     workspaces/workspace-startup.sh \
     /usr/local/bin/workspace-startup
-COPY --from=uv --chmod=0555 /uv /uvx /usr/local/bin/
 COPY --chown=root:root --chmod=0444 \
     workspaces/python/images/activate-venv.sh \
     /etc/profile.d/coder-venv.sh
@@ -55,7 +83,6 @@ ENV HOME=/home/coder \
     SHELL=/usr/bin/zsh \
     USER=coder \
     LOGNAME=coder \
-    CODER_PYTHON_ENVIRONMENT=/home/coder/.venv \
     VIRTUAL_ENV=/home/coder/.venv \
     UV_OFFLINE=true \
     UV_PYTHON_DOWNLOADS=never \
@@ -76,29 +103,15 @@ FROM runtime AS project
 ARG PROJECT
 ARG IMAGE_VERSION=0.1.0
 
-USER root
-RUN install -d -o 1000 -g 1000 -m 0755 /opt/project-config /opt/uv-cache
-COPY --chown=1000:1000 --chmod=0444 workspaces/python/images/${PROJECT}/pyproject.toml workspaces/python/images/${PROJECT}/uv.lock /opt/project-config/
-
-ENV UV_CACHE_DIR=/opt/uv-cache \
-    UV_LINK_MODE=copy \
-    UV_PROJECT_ENVIRONMENT=.venv
-
-USER 1000:1000
-WORKDIR /opt/project-config
-RUN UV_OFFLINE=false uv sync --locked --all-groups --no-install-project \
-    && rm -rf .venv \
-    && test -n "$(find /opt/uv-cache -type f -print -quit)"
-
-USER root
-RUN chmod -R a-w /opt/project-config \
-    && chmod -R a=rX /opt/project-config \
-    && chmod -R u+rwX,go=rX /opt/uv-cache
+COPY --from=project-dependencies --chown=1000:1000 /opt/project-config /opt/project-config
+COPY --from=project-dependencies --chown=1000:1000 /opt/uv-cache /opt/uv-cache
 
 # The managed config stays immutable in the image while its environment lives
 # on the persistent home volume. workspace-startup syncs it before the Coder
 # agent starts; every child process then sees the environment as active.
-ENV UV_PROJECT=/opt/project-config \
+ENV UV_CACHE_DIR=/opt/uv-cache \
+    UV_LINK_MODE=copy \
+    UV_PROJECT=/opt/project-config \
     UV_PROJECT_ENVIRONMENT=/home/coder/.venv
 
 USER 1000:1000

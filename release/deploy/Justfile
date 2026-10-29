@@ -1,10 +1,44 @@
-# Publish using zarf-config.yaml and the manually supplied, command-scoped token.
+# Packaging replaces this marker with the identity derived from committed HEAD.
+release := "###RELEASE_ID###"
+export ZARF_CONFIG := justfile_directory() / "zarf-config.yaml"
+
+# Mirror this release's images, then publish its templates.
+deploy: mirror publish
+
+# Import this release's image package into the deployment's registry.
+mirror:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    package="./zarf-package-coder-workspaces-images-amd64-{{ release }}.tar.zst"
+    test -f "$package"
+    test -f "$ZARF_CONFIG"
+    printf 'Mirroring release %s using %s\n' {{ quote(release) }} "$ZARF_CONFIG"
+    registry="$(zarf tools yq -er '.package.deploy.set.REGISTRY' "$ZARF_CONFIG")"
+    registry_password="$(
+      kubectl -n "${REGISTRY_WRITER_SECRET_NAMESPACE:?Set REGISTRY_WRITER_SECRET_NAMESPACE in .env}" \
+        get secret "${REGISTRY_WRITER_SECRET_NAME:?Set REGISTRY_WRITER_SECRET_NAME in .env}" \
+        -o "jsonpath={.data.${REGISTRY_WRITER_SECRET_KEY:?Set REGISTRY_WRITER_SECRET_KEY in .env}}" | base64 --decode
+    )"
+    SSL_CERT_FILE="${REGISTRY_CA_FILE:?Set REGISTRY_CA_FILE in .env}" \
+    ZARF_INIT_REGISTRY_PUSH_PASSWORD="$registry_password" \
+    zarf package mirror-resources "$package" \
+      --registry-url "$registry" \
+      --registry-push-username "${REGISTRY_PUSH_USERNAME:?Set REGISTRY_PUSH_USERNAME in .env}" \
+      --images --no-img-checksum --confirm
+
+# Publish this release using its config and the manually supplied token.
 publish:
     #!/usr/bin/env bash
     set -euo pipefail
-    : "${ZARF_VAR_CODER_TOKEN:?Supply your manually created Coder API token in the environment}"
-    shopt -s nullglob
-    packages=(./zarf-package-coder-workspaces-publish-amd64-*.tar.zst)
-    test "${#packages[@]}" -eq 1 || { echo "Expected one publication package in this release directory." >&2; exit 1; }
-    zarf package deploy "${packages[0]}" --connected --confirm \
-      --set-variables "CODER_TOKEN=$ZARF_VAR_CODER_TOKEN"
+    package="./zarf-package-coder-workspaces-publish-amd64-{{ release }}.tar.zst"
+    test -f "$package"
+    test -f "$ZARF_CONFIG"
+    coder_token="${ZARF_VAR_CODER_TOKEN:-}"
+    if [[ -z "$coder_token" ]]; then
+      IFS= read -r -s -p 'Coder API token: ' coder_token </dev/tty
+      printf '\n' >&2
+    fi
+    : "${coder_token:?Coder API token must not be empty}"
+    printf 'Publishing release %s using %s\n' {{ quote(release) }} "$ZARF_CONFIG"
+    zarf package deploy "$package" --connected --confirm \
+      --set-variables "CODER_TOKEN=$coder_token"
